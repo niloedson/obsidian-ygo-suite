@@ -37,6 +37,26 @@ function makeSnippet(desc: string, maxLen = 120): string {
   return `${singleLine.slice(0, maxLen).trim()}...`;
 }
 
+function cleanArchetypeRoot(arch: string): string {
+  return arch
+    .toLowerCase()
+    .replace(/\s+(ritual|dragon|fusion|synchro|xyz|link|pendulum|pure|deck|engine)$/gi, "")
+    .trim();
+}
+
+function isArchetypeMatch(cardArch: string, targetArch: string): boolean {
+  const c = cardArch.toLowerCase().trim();
+  const t = targetArch.toLowerCase().trim();
+  if (t.includes(c) || c.includes(t)) return true;
+
+  const cRoot = cleanArchetypeRoot(c);
+  const tRoot = cleanArchetypeRoot(t);
+  if (cRoot.length >= 4 && tRoot.length >= 4) {
+    if (tRoot.includes(cRoot) || cRoot.includes(tRoot)) return true;
+  }
+  return false;
+}
+
 function hasFtsTable(db: DatabaseSync): boolean {
   try {
     const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='cards_fts'").get();
@@ -641,22 +661,23 @@ export function queryTopTechCards(
     if (!deck) continue;
 
     const cardArch = row.card_archetype?.toLowerCase();
+    const cardName = row.name.toLowerCase();
     let isEngine = false;
+
+    const dArch1 = deck.archetype?.toLowerCase();
+    const dArch2 = deck.arch_2?.toLowerCase();
+    const dArch3 = deck.arch_3?.toLowerCase();
+    const dName = deck.deck_name?.toLowerCase();
 
     // Check if card matches primary, secondary, or tertiary deck archetype
     if (cardArch) {
-      const dArch1 = deck.archetype?.toLowerCase();
-      const dArch2 = deck.arch_2?.toLowerCase();
-      const dArch3 = deck.arch_3?.toLowerCase();
-      const dName = deck.deck_name?.toLowerCase();
-
-      if (dArch1 && (dArch1.includes(cardArch) || cardArch.includes(dArch1))) {
+      if (dArch1 && isArchetypeMatch(cardArch, dArch1)) {
         isEngine = true;
-      } else if (dArch2 && (dArch2.includes(cardArch) || cardArch.includes(dArch2))) {
+      } else if (dArch2 && isArchetypeMatch(cardArch, dArch2)) {
         isEngine = true;
-      } else if (dArch3 && (dArch3.includes(cardArch) || cardArch.includes(dArch3))) {
+      } else if (dArch3 && isArchetypeMatch(cardArch, dArch3)) {
         isEngine = true;
-      } else if (dName && dName.includes(cardArch)) {
+      } else if (dName && (dName.includes(cardArch) || (cleanArchetypeRoot(cardArch).length >= 4 && dName.includes(cleanArchetypeRoot(cardArch))))) {
         isEngine = true;
       } else if (row.section === "main") {
         // Pile Deck cluster check: >= 3 cards of this archetype in the main deck
@@ -667,10 +688,20 @@ export function queryTopTechCards(
       }
     }
 
+    // Also check if card name directly matches the archetype root of primary, secondary, or tertiary engines
+    if (!isEngine) {
+      if (dArch1 && isArchetypeMatch(cardName, dArch1)) {
+        isEngine = true;
+      } else if (dArch2 && isArchetypeMatch(cardName, dArch2)) {
+        isEngine = true;
+      } else if (dArch3 && isArchetypeMatch(cardName, dArch3)) {
+        isEngine = true;
+      }
+    }
+
     // Side deck cards: even if from an archetype, they function as tech/counter cards unless they match the primary deck archetype
     if (row.section === "side") {
-      const dArch1 = deck.archetype?.toLowerCase();
-      if (cardArch && dArch1 && (dArch1.includes(cardArch) || cardArch.includes(dArch1))) {
+      if (dArch1 && ((cardArch && isArchetypeMatch(cardArch, dArch1)) || isArchetypeMatch(cardName, dArch1))) {
         isEngine = true;
       } else {
         isEngine = false; // Side deck hate / tech cards

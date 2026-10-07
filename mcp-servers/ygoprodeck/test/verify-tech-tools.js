@@ -62,6 +62,9 @@ async function runTests() {
   insertCardStmt.run(15693423, "Evenly Matched", "Trap Card", "trap", "Banish opponent cards face-down.", null);
   insertCardStmt.run(94145021, "Droll & Lock Bird", "Effect Monster", "effect", "Neither player can add cards from Deck to hand.", null);
 
+  // Threat archetype cards for counter testing
+  insertCardStmt.run(74095194, "Snake-Eye Ash", "Effect Monster", "effect", "If this card is Normal or Special Summoned: You can add 1 Level 1 FIRE monster from your Deck to your hand. You can send 2 face-up cards you control to the GY; Special Summon 1 Snake-Eye monster from your hand or Deck.", "Snake-Eye");
+
   // Seed tournament event
   db.prepare(`
     INSERT OR REPLACE INTO tournament_events (id, name, country, event_date, winner, format, slug, player_count)

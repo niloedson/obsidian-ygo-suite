@@ -37,6 +37,15 @@ function makeSnippet(desc: string, maxLen = 120): string {
   return `${singleLine.slice(0, maxLen).trim()}...`;
 }
 
+function hasFtsTable(db: DatabaseSync): boolean {
+  try {
+    const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='cards_fts'").get();
+    return Boolean(row);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Searches cards using full-text search (FTS5) and/or structured parameter filters.
  */
@@ -44,7 +53,7 @@ export function queryCards(db: DatabaseSync, input: SearchCardsInput): CardSearc
   const conditions: string[] = [];
   const params: any[] = [];
 
-  const useFts = Boolean(input.query && input.query.trim().length > 0);
+  const useFts = Boolean(input.query && input.query.trim().length > 0 && hasFtsTable(db));
   let baseQuery = "";
 
   if (useFts) {
@@ -62,6 +71,11 @@ export function queryCards(db: DatabaseSync, input: SearchCardsInput): CardSearc
     }
   } else {
     baseQuery = "SELECT c.* FROM cards c";
+    if (input.query && input.query.trim().length > 0) {
+      conditions.push("(c.name LIKE ? OR c.desc LIKE ? OR c.archetype LIKE ?)");
+      const term = `%${input.query.trim()}%`;
+      params.push(term, term, term);
+    }
   }
 
   // Structured Filters

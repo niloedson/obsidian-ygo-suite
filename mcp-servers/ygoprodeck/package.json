@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsx --experimental-sqlite test/verify-tech-tools.ts",
+    "test": "node --experimental-sqlite test/verify-tech-tools.js",
     "start": "node --experimental-sqlite dist/server.js",
     "dev": "tsx --experimental-sqlite src/server.ts",
     "sync": "tsx --experimental-sqlite src/cli/sync.ts",

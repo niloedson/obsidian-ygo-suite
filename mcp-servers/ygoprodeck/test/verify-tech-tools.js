@@ -1,11 +1,11 @@
 import assert from "node:assert";
-import { getDbConnection, initDbSchema } from "../src/db/connection.js";
+import { getDbConnection, initDbSchema } from "../dist/db/connection.js";
 import {
   queryEvaluateTechCounters,
   queryTopTechCards,
   queryTournamentDecklists
-} from "../src/db/queries.js";
-import { parseDeckHtml } from "../src/cli/syncTournaments.js";
+} from "../dist/db/queries.js";
+import { parseDeckHtml } from "../dist/cli/syncTournaments.js";
 
 async function runTests() {
   console.log("=== Yu-Gi-Oh! Top-Cut Decks & Tech Tools Verification ===");

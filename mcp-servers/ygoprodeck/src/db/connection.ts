@@ -51,8 +51,20 @@ export function getDbConnection(readonly = false): DatabaseSync {
 }
 
 /**
+ * Detects whether the current SQLite build supports the FTS5 full-text search extension.
+ */
+export function isFts5Supported(db: DatabaseSync): boolean {
+  try {
+    const opts = db.prepare("pragma compile_options").all() as Array<{ compile_options: string }>;
+    return opts.some((r) => r.compile_options === "ENABLE_FTS5");
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Initializes database tables and FTS5 indices from schema.sql.
- * Used exclusively by the sync worker.
+ * Used exclusively by the sync worker and test suites.
  */
 export function initDbSchema(db: DatabaseSync): void {
   let schemaPath = path.join(__dirname, "schema.sql");
@@ -61,5 +73,18 @@ export function initDbSchema(db: DatabaseSync): void {
     schemaPath = path.resolve(__dirname, "../../src/db/schema.sql");
   }
   const schemaSql = fs.readFileSync(schemaPath, "utf-8");
-  db.exec(schemaSql);
+
+  if (isFts5Supported(db)) {
+    db.exec(schemaSql);
+  } else {
+    console.warn(
+      "[WARN] SQLite FTS5 extension is not compiled into this Node runtime. " +
+      "Falling back to relational tables without virtual FTS table."
+    );
+    // Strip FTS5 virtual table and synchronization triggers if runtime lacks FTS5
+    const baseSql = schemaSql
+      .replace(/-- 4\. Full-Text Search \(FTS5\) Virtual Table[\s\S]*?END;/m, "")
+      .trim();
+    db.exec(baseSql);
+  }
 }

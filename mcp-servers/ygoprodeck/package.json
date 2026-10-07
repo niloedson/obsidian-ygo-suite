@@ -1,0 +1,43 @@
+{
+  "name": "ygoprodeck-mcp",
+  "version": "1.2.0",
+  "description": "Hardened, local-first Model Context Protocol (MCP) server for YGOPRODeck card text, format banlists, and tournament meta analytics.",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "ygoprodeck-mcp": "./dist/server.js",
+    "ygoprodeck-sync": "./dist/cli/sync.js",
+    "ygoprodeck-sync-tournaments": "./dist/cli/syncTournaments.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --experimental-sqlite test/verify-tech-tools.ts",
+    "start": "node --experimental-sqlite dist/server.js",
+    "dev": "tsx --experimental-sqlite src/server.ts",
+    "sync": "tsx --experimental-sqlite src/cli/sync.ts",
+    "sync:tournaments": "tsx --experimental-sqlite src/cli/syncTournaments.ts",
+    "sync:all": "tsx --experimental-sqlite src/cli/sync.ts && tsx --experimental-sqlite src/cli/syncTournaments.ts",
+    "sync:build": "node --experimental-sqlite dist/cli/sync.js && node --experimental-sqlite dist/cli/syncTournaments.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "yugioh",
+    "ygoprodeck",
+    "tournaments",
+    "meta",
+    "sqlite",
+    "psct"
+  ],
+  "author": "Nedson",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

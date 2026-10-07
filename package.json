@@ -1,0 +1,30 @@
+{
+  "name": "@obsidian/ygo-suite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Obsidian Team - Unified Yu-Gi-Oh! AI Agent Skills and Local-First MCP Knowledge Server",
+  "type": "module",
+  "workspaces": [
+    "mcp-servers/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "sync": "npm run sync --workspace=ygoprodeck-mcp",
+    "sync:tournaments": "npm run sync:tournaments --workspace=ygoprodeck-mcp",
+    "sync:all": "npm run sync:all --workspace=ygoprodeck-mcp",
+    "lint:skills": "node scripts/validate-skills.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "yugioh",
+    "mcp",
+    "model-context-protocol",
+    "ai-skills",
+    "agent",
+    "hypergeometric",
+    "psct"
+  ],
+  "author": "Obsidian Team",
+  "license": "MIT"
+}

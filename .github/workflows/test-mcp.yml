@@ -1,0 +1,38 @@
+name: Test MCP Server
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'mcp-servers/**'
+      - 'package.json'
+      - '.github/workflows/test-mcp.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'mcp-servers/**'
+      - 'package.json'
+      - '.github/workflows/test-mcp.yml'
+
+jobs:
+  test:
+    name: Build & Verify MCP Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Workspace Dependencies
+        run: npm ci || npm install
+
+      - name: Build MCP Packages
+        run: npm run build
+
+      - name: Run MCP Tests
+        run: npm test

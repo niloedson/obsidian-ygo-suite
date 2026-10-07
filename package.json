@@ -10,6 +10,7 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces",
+    "test:math": "python skills/ygo-deck-architect/scripts/calculate_odds.py --test",
     "sync": "npm run sync --workspace=ygoprodeck-mcp",
     "sync:tournaments": "npm run sync:tournaments --workspace=ygoprodeck-mcp",
     "sync:all": "npm run sync:all --workspace=ygoprodeck-mcp",

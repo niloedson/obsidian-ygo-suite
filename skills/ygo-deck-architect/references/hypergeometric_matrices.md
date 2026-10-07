@@ -17,10 +17,10 @@ $$P(X \ge k) = \sum_{x=k}^{\min(n, K)} \frac{\binom{K}{x} \binom{N-K}{n-x}}{\bin
 | **3** | **33.8%** | 66.2% | 3.6% | Single 3-of starter |
 | **6** | **57.7%** | 42.3% | 15.6% | 2 different starters |
 | **9** | **74.5%** | 25.5% | 33.6% | Moderate engine |
-| **12** | **85.1%** | 14.9% | 52.3% | Standard baseline |
-| **14** | **90.4%** | **9.6%** | **63.4%** | **★ >90% TARGET ACHIEVED** |
-| **15** | **91.9%** | 8.1% | 68.3% | Heavy Hand Trap Core ($n=5$) |
-| **16** | **93.9%** | 6.1% | 74.0% | Ultra-Consistent Engine |
+| **12** | **85.1%** | 14.9% | 48.0% | Standard baseline |
+| **14** | **90.0%** | **10.0%** | **58.2%** | **★ >90% TARGET ACHIEVED** |
+| **15** | **91.9%** | 8.1% | 63.3% | Heavy Hand Trap Core ($n=5$) |
+| **16** | **93.6%** | 6.4% | 68.2% | Ultra-Consistent Engine |
 
 ---
 
@@ -29,9 +29,9 @@ $$P(X \ge k) = \sum_{x=k}^{\min(n, K)} \frac{\binom{K}{x} \binom{N-K}{n-x}}{\bin
 | Target Cards ($K$) | Probability $\ge 1$ | Probability Exactly 0 | Probability $\ge 2$ | Notes |
 | :---: | :---: | :---: | :---: | :--- |
 | **1** | **11.9%** | 88.1% | 0.0% | Slightly diluted Garnet |
-| **12** | **82.8%** | 17.2% | 48.0% | Sub-optimal |
-| **14** | **88.4%** | 11.6% | 58.7% | Close to 90% |
-| **15** | **90.6%** | **9.4%** | **63.8%** | **★ >90% TARGET ACHIEVED** |
+| **12** | **82.8%** | 17.2% | 44.5% | Sub-optimal |
+| **14** | **88.4%** | 11.6% | 54.7% | Close to 90% |
+| **15** | **90.5%** | **9.5%** | **59.6%** | **★ >90% TARGET ACHIEVED** |
 
 ---
 
@@ -40,8 +40,8 @@ $$P(X \ge k) = \sum_{x=k}^{\min(n, K)} \frac{\binom{K}{x} \binom{N-K}{n-x}}{\bin
 | Target Cards ($K$) | Probability $\ge 1$ | Probability Exactly 0 | Probability $\ge 2$ | Notes |
 | :---: | :---: | :---: | :---: | :--- |
 | **1** | **11.1%** | 88.9% | 0.0% | Garnet draw reduced |
-| **14** | **85.4%** | 14.6% | 52.7% | Falls below 90% |
-| **16** | **90.5%** | **9.5%** | **63.6%** | **★ >90% TARGET ACHIEVED** |
+| **14** | **85.4%** | 14.6% | 50.1% | Falls below 90% |
+| **16** | **90.3%** | **9.7%** | **59.5%** | **★ >90% TARGET ACHIEVED** |
 
 ---
 
@@ -52,8 +52,9 @@ $$P(X \ge k) = \sum_{x=k}^{\min(n, K)} \frac{\binom{K}{x} \binom{N-K}{n-x}}{\bin
 | **1** | **8.3%** | 91.7% | 0.0% | **Garnet risk cut from 12.5% to 8.3%** |
 | **15** | **76.9%** | 23.1% | 37.1% | Unplayable consistency |
 | **18** | **84.3%** | 15.7% | 48.5% | Still under 85% |
-| **21** | **90.1%** | **9.9%** | **59.3%** | **★ >90% TARGET ACHIEVED (Requires 21 starters)** |
-| **24** | **94.0%** | 6.0% | 68.8% | Optimal 60-card starter count |
+| **21** | **89.5%** | 10.5% | 57.3% | Sub-90% threshold |
+| **22** | **90.8%** | **9.2%** | **61.3%** | **★ >90% TARGET ACHIEVED (Requires 22 starters)** |
+| **24** | **93.1%** | 6.9% | 68.6% | Optimal 60-card starter count |
 
 ---
 
@@ -70,6 +71,7 @@ $$P(X \ge k) = \sum_{x=k}^{\min(n, K)} \frac{\binom{K}{x} \binom{N-K}{n-x}}{\bin
 ---
 
 ## 6. Architectural Provenance & Monorepo Links
+* **Deterministic Combinatorics Script:** [`../scripts/calculate_odds.py`](../scripts/calculate_odds.py) (execute via `python skills/ygo-deck-architect/scripts/calculate_odds.py`)
 * **ADR Design Record:** [ADR-002: Competitive Deck Architecture & Hypergeometric Probability Engine](../../../docs/decisions/ADR-002-deck-architect-skill.md)
 * **Monorepo Architecture:** [ADR-004: Monorepo Architecture, Git Bloat Protection & Obsidian Branding](../../../docs/decisions/ADR-004-root-monorepo-structure.md)
 * **Core Skill Definition:** [`ygo-deck-architect` SKILL.md](../SKILL.md)

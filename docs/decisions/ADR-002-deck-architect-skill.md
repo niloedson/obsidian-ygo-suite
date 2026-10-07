@@ -37,8 +37,8 @@ The Obsidian Team codified competitive deck theory into an autonomous agent skil
 
 ### A. The $>90\%$ Opening Consistency Threshold
 $$P(X \ge 1) = 1 - \frac{\binom{N - K}{5}}{\binom{N}{5}} > 90\%$$
-* **40 Cards:** Requires $\ge 14$ primary starters ($90.4\%$).
-* **60 Cards:** Requires $\ge 21$ primary starters ($90.1\%$).
+* **40 Cards:** Requires $\ge 14$ primary starters ($90.0\%$).
+* **60 Cards:** Requires $\ge 22$ primary starters ($90.8\%$; 21 starters reaches only $89.5\%$).
 
 ### B. The Asymmetric Hand Size Axiom
 * **Turn 0 Hand Traps ($n = 5$):** Evaluated strictly against the 5-card opening hand. Hand traps drawn as the 6th card on Turn 2 are dead against established negations.
@@ -47,9 +47,13 @@ $$P(X \ge 1) = 1 - \frac{\binom{N - K}{5}}{\binom{N}{5}} > 90\%$$
 ### C. Multi-Engine Pile Deck Clustering
 In 50-to-60 card pile decks, archetypes with $\ge 3$ cards in the Main Deck are clustered as **Engine Packages**, preventing secondary splash engines (*Bystials*, *Horus*, *Azamina*) from polluting generic tech card statistics.
 
+### D. Deterministic Python Execution Engine
+To prevent LLM hallucination and arithmetic drift during complex multivariate audits, the skill bundles a zero-dependency Python combinatorics engine at `skills/ygo-deck-architect/scripts/calculate_odds.py`. The engine computes exact integer-combinatoric joint distributions, handles arbitrary deck sizes ($N \in [40, 60]$), evaluates custom boolean hand conditions, and generates high-resolution Unicode horizontal bar charts for scorecards.
+
 ---
 
 ## 4. Consequences & Downstream Artifacts
 
 * **Predictable Output:** Audits follow the standardized **Deck Consistency Scorecard** format with visual distribution graphs.
+* **Deterministic Tooling:** Bundled `scripts/calculate_odds.py` executes in $<5\text{ms}$ with self-test verification (`--test`).
 * **Production Implementation:** Built and operational in `skills/ygo-deck-architect/`.

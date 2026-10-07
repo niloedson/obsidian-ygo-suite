@@ -145,6 +145,7 @@ def run_deck_audit(
     extenders: int = 0,
     hand_traps: int = 0,
     board_breakers: int = 0,
+    defensive_tech: int = 0,
     garnets: int = 0,
     custom_pools: Optional[Dict[str, int]] = None,
     custom_condition: Optional[str] = None,
@@ -157,6 +158,7 @@ def run_deck_audit(
         "extenders": extenders,
         "hand_traps": hand_traps,
         "board_breakers": board_breakers,
+        "defensive_tech": defensive_tech,
         "garnets": garnets,
     }
     if custom_pools:
@@ -174,6 +176,9 @@ def run_deck_audit(
     # Turn 0 Hand Traps (Asymmetric Axiom: n = 5)
     p_ht_ge1_t0 = hypergeom_cdf_ge(1, deck_size, hand_traps, 5) * 100.0 if hand_traps > 0 else 0.0
     p_ht_ge2_t0 = hypergeom_cdf_ge(2, deck_size, hand_traps, 5) * 100.0 if hand_traps > 0 else 0.0
+
+    # Turn 1 Defensive Tech (Called / Crossout: n = 5)
+    p_defensive_ge1_t1 = hypergeom_cdf_ge(1, deck_size, defensive_tech, 5) * 100.0 if defensive_tech > 0 else 0.0
 
     # Turn 2 Board Breakers (Asymmetric Axiom: n = 6)
     p_breaker_ge1_t2 = hypergeom_cdf_ge(1, deck_size, board_breakers, 6) * 100.0 if board_breakers > 0 else 0.0
@@ -237,6 +242,7 @@ def run_deck_audit(
             "brick_t1_0_starters": round(p_brick_t1, 2),
             "hand_trap_t0_ge1": round(p_ht_ge1_t0, 2),
             "hand_trap_t0_ge2": round(p_ht_ge2_t0, 2),
+            "defensive_tech_t1_ge1": round(p_defensive_ge1_t1, 2),
             "breaker_t2_ge1": round(p_breaker_ge1_t2, 2),
             "garnet_t1_ge1": round(p_garnet_ge1_t1, 2),
             "net_playable_starter_no_garnet": round(p_net_playable, 2),
@@ -247,6 +253,7 @@ def run_deck_audit(
             "starter_ge1": render_ascii_bar(p_starter_t1),
             "hand_trap_ge1": render_ascii_bar(p_ht_ge1_t0),
             "hand_trap_ge2": render_ascii_bar(p_ht_ge2_t0),
+            "defensive_ge1": render_ascii_bar(p_defensive_ge1_t1),
             "breaker_ge1": render_ascii_bar(p_breaker_ge1_t2),
             "garnet_ge1": render_ascii_bar(p_garnet_ge1_t1),
             "net_playable": render_ascii_bar(p_net_playable),
@@ -289,6 +296,7 @@ def format_text_report(audit: Dict[str, Any]) -> str:
         f"• Turn 0 Hand Trap Access (n = 5):",
         f"  - Chance of ≥1 Hand Trap:                   {p['hand_trap_t0_ge1']:5.1f}%",
         f"  - Chance of ≥2 Hand Traps:                   {p['hand_trap_t0_ge2']:5.1f}%",
+        f"• Turn 1 Defensive Tech Access (n = 5):         {p['defensive_tech_t1_ge1']:5.1f}%",
         f"• Turn 2 Board Breaker Access (n = 6):          {p['breaker_t2_ge1']:5.1f}%",
         f"• Garnet Draw Risk (Turn 1, n = 5):             {p['garnet_t1_ge1']:5.1f}%",
         "",
@@ -301,11 +309,17 @@ def format_text_report(audit: Dict[str, Any]) -> str:
         f"Opening 1+ Starters (T1):  {g['starter_ge1']}",
         f"Turn 0 Hand Trap ≥1 (T0):  {g['hand_trap_ge1']}",
         f"Turn 0 Hand Trap ≥2 (T0):  {g['hand_trap_ge2']}",
+    ]
+
+    if p["defensive_tech_t1_ge1"] > 0:
+        lines.append(f"Turn 1 Defensive Tech (T1):{g['defensive_ge1']}")
+
+    lines.extend([
         f"Turn 2 Breaker ≥1 (T2):    {g['breaker_ge1']}",
         f"Opening 1+ Garnet (T1):    {g['garnet_ge1']}",
         f"Net Playable Hand (T1):    {g['net_playable']}",
         f"Starter + Hand Trap (T0):  {g['starter_plus_ht']}",
-    ]
+    ])
 
     if audit.get("custom_query"):
         cq = audit["custom_query"]
@@ -437,6 +451,8 @@ def main() -> None:
     parser.add_argument("--hand-traps-list", type=str, default=None, help="Comma-separated card passcodes for hand traps")
     parser.add_argument("--breakers", "-b", type=int, default=0, help="Turn 2 board breakers count (evaluated at n=6)")
     parser.add_argument("--breakers-list", type=str, default=None, help="Comma-separated card passcodes for breakers")
+    parser.add_argument("--defensive", "-d", type=int, default=0, help="Turn 1 defensive tech count (evaluated at n=5)")
+    parser.add_argument("--defensive-list", type=str, default=None, help="Comma-separated card passcodes for defensive tech")
     parser.add_argument("--garnets", "-g", type=int, default=0, help="Hard brick / Garnet count")
     parser.add_argument("--garnets-list", type=str, default=None, help="Comma-separated card passcodes for garnets")
     parser.add_argument("--categories", "-c", type=str, default=None, help="Arbitrary categories (e.g. 'engineA=8,engineB=6,traps=9')")
@@ -455,6 +471,7 @@ def main() -> None:
     extenders = args.extenders
     hand_traps = args.hand_traps
     breakers = args.breakers
+    defensive_tech = args.defensive
     garnets = args.garnets
 
     if args.ydk:
@@ -470,6 +487,8 @@ def main() -> None:
                 hand_traps = count_ids_in_list(args.hand_traps_list, main_cards)
             if args.breakers_list:
                 breakers = count_ids_in_list(args.breakers_list, main_cards)
+            if args.defensive_list:
+                defensive_tech = count_ids_in_list(args.defensive_list, main_cards)
             if args.garnets_list:
                 garnets = count_ids_in_list(args.garnets_list, main_cards)
 
@@ -481,6 +500,7 @@ def main() -> None:
         extenders=extenders,
         hand_traps=hand_traps,
         board_breakers=breakers,
+        defensive_tech=defensive_tech,
         garnets=garnets,
         custom_pools=custom_pools,
         custom_condition=args.condition,

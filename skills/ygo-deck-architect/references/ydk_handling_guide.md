@@ -83,15 +83,16 @@ Competitive Yu-Gi-Oh! frequently features 50-to-60 card "pile decks" that combin
 2. MCP Card Resolution (get_card_details -> Name, Type, PSCT, Archetype via ygoprodeck-mcp)
           │
           ▼
-3. Taxonomy Tagging ([STARTER-NS], [STARTER-SS], [EXTENDER], [TECH-HT], [TECH-BREAKER], [BRICK])
+3. Taxonomy Tagging ([STARTER-NS], [STARTER-SS], [EXTENDER], [TECH-HT], [TECH-DEFENSIVE], [TECH-BREAKER], [HARD-BRICK], [ENGINE-BRICK])
    + Pile Deck Engine Clustering (protects secondary engines from tech misclassification)
           │
           ▼
 4. Combinatoric Probability Computation:
    • Starter Consistency (n=5, target >90%)
    • Turn 0 Hand Trap Access (n=5)
+   • Turn 1 Defensive Tech Access (n=5)
    • Turn 2 Board Breaker Access (n=6)
-   • Garnet Risk (n=5)
+   • Hard Brick / Garnet Risk (n=5)
           │
           ▼
 5. Output Deck Audit Scorecard + Visual ASCII Bar Chart
@@ -104,7 +105,20 @@ Competitive Yu-Gi-Oh! frequently features 50-to-60 card "pile decks" that combin
 
 ---
 
-## 5. Standard `.ydk` Export Block Layout
+## 5. Dynamic Sideboard Transition Patterns (Going First vs. Going Second)
+
+Competitive play requires analyzing sideboarding not just as adding silver bullets, but as **purging dead cards**:
+
+### The "Going-First Setup Shedding" Pattern:
+* **The Problem:** Many decks require hard bricks going first (e.g. unsummonable Level 6/7 boss attachments like *R.B. Lambda Blade* / *Lambda Cannon*, or search-only Counter Traps like *R.B. Next Phase*). While mandatory to establish end-board interruptions on Turn 1, drawing these cards going second is fatal because they provide zero board-breaking utility.
+* **The Solution (The 3-Card Swap Pattern):**
+  - **Side OUT (Going Second):** Remove the dedicated Turn 1 setup pieces (`Lambda Blade` + `Lambda Cannon` + `Next Phase`).
+  - **Side IN (Going Second):** Bring in 3 high-impact Turn 2 Board Breakers (*Forbidden Droplet*, *Lightning Storm*, *Triple Tactics Talent*, or *Nibiru*).
+  - **Mathematical Impact:** Eliminates 3 dead draws from the deck while surging the probability of opening $\ge 1$ high-impact Turn 2 breaker ($n=6$) into the 70–85% range without sacrificing core starter density!
+
+---
+
+## 6. Standard `.ydk` Export Block Layout
 
 Whenever the Architect suggests optimizations or creates a new deck build, always append a copy-pasteable `.ydk` code block:
 
@@ -124,7 +138,7 @@ This allows the user to immediately save the snippet as `<deckname>.ydk` and loa
 
 ---
 
-## 6. Architectural Provenance & Monorepo Links
+## 7. Architectural Provenance & Monorepo Links
 * **ADR Design Record:** [ADR-002: Competitive Deck Architecture & Hypergeometric Probability Engine](../../../docs/decisions/ADR-002-deck-architect-skill.md)
 * **Monorepo Architecture:** [ADR-004: Monorepo Architecture, Git Bloat Protection & Obsidian Branding](../../../docs/decisions/ADR-004-root-monorepo-structure.md)
 * **Deterministic MCP Data Layer:** [mcp-servers/ygoprodeck](../../../mcp-servers/ygoprodeck)

@@ -47,7 +47,39 @@ Visualizes how non-engine interruption stacks in a 5-card Turn 0 hand:
 
 ---
 
-## 4. Architectural Provenance & Monorepo Links
+## 4. Multi-Boss Combo Routing & Interruption Flowcharts
+
+When modeling Link-based and multi-boss combo strategies in Mermaid:
+1. **Full-Combo Chronological Sequencing:**
+   * Always order bosses by their resolution sequence.
+   * *Example (R.B. Core):* `VALCan Booster` (Link-2) searches spell and summons from GY/hand $\rightarrow$ Links into **`The Brute Blues` (Link-3)** first (searches R.B. card from Deck) $\rightarrow$ Links into **`Shepherd's Crook` (Link-3)** (sets `Next Phase` or `Last Stand` from Deck/GY and prepares the opponent-turn Quick Effect revival).
+2. **Interruption & Resilient Fallback Paths:**
+   * Graph an explicit fallback branch for opponent hand traps. If `VALCan Booster` is negated or interrupted, the player pivots directly into `Shepherd's Crook` to guarantee at least 1 trap interruption.
+3. **Emergency Generic Bridges (The "Camellia Line"):**
+   * Graph universal 2-monster Link bridges that rescue bricked hands.
+   * *Pattern:* Opening `[Hand Trap + Extender]` (0 primary starters) $\rightarrow$ Normal Summon Hand Trap (Effect Monster) + Special Summon Extender $\rightarrow$ Link Summon `Sky Striker Ace - Camellia` (Link-2 Machine) $\rightarrow$ Send `Hornet Drones` to GY $\rightarrow$ Link into `Kagari` $\rightarrow$ Retrieve `Hornet Drones` $\rightarrow$ Special Summon Token $\rightarrow$ Assemble 2 Machine bodies $\rightarrow$ Proceed to full combo!
+
+```mermaid
+graph TD
+    subgraph "Normal Hand: Primary 2-Machine Starters"
+        ST["Cyanos / Engage / Drones / Funk Dock / Stage Landing"] -->|"Assembles 2 Machine Bodies"| VB["R.B. VALCan Booster (Link-2)"]
+    end
+
+    subgraph "Sub-Optimal Hand: Emergency Camellia Bridge"
+        EM["Hand Trap (NS) + R.B. Extender (SS)"] -->|"2 Effect Monsters"| CA["Sky Striker Ace - Camellia (Link-2)"]
+        CA -->|"Dumps Hornet Drones to GY"| KG["Sky Striker Ace - Kagari (Link-1)"]
+        KG -->|"Recycles Drones -> Summons Token"| VB
+    end
+
+    VB -->|"Uninterrupted Full Line"| BB["R.B. The Brute Blues (Link-3)<br/>(Adds R.B. Card from Deck)"]
+    BB -->|"Climbs into End Board"| SC["R.B. Shepherd's Crook (Link-3)<br/>(Sets Next Phase / Opponent Turn Revival)"]
+
+    VB -.->|"If Interrupted by Hand Trap"| SC
+```
+
+---
+
+## 5. Architectural Provenance & Monorepo Links
 * **ADR Design Record:** [ADR-002: Competitive Deck Architecture & Hypergeometric Probability Engine](../../../docs/decisions/ADR-002-deck-architect-skill.md)
 * **Monorepo Architecture:** [ADR-004: Monorepo Architecture, Git Bloat Protection & Obsidian Branding](../../../docs/decisions/ADR-004-root-monorepo-structure.md)
 * **Core Skill Definition:** [`ygo-deck-architect` SKILL.md](../SKILL.md)

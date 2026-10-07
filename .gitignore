@@ -31,3 +31,14 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# User decklists & generated audit reports
+decks/
+reports/
+
+# Local IDE & AI Agent configurations
+.gemini/
+.cursor/
+
+# Local utility scripts
+tasks.py

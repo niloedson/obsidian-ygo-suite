@@ -65,7 +65,21 @@ for (const folder of skillFolders) {
 
   // Validate reference artifacts existence
   const refsDir = path.join(skillPath, 'references');
-  const refFiles = fs.existsSync(refsDir) ? fs.readdirSync(refsDir) : [];
+  function getAllFiles(dirPath, arrayOfFiles = []) {
+    if (!fs.existsSync(dirPath)) return arrayOfFiles;
+    const entries = fs.readdirSync(dirPath);
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry);
+      if (fs.statSync(fullPath).isDirectory()) {
+        getAllFiles(fullPath, arrayOfFiles);
+      } else {
+        arrayOfFiles.push(fullPath);
+      }
+    }
+    return arrayOfFiles;
+  }
+
+  const allRefFiles = getAllFiles(refsDir);
 
   // Extract all markdown links in SKILL.md
   const linkMatches = [...content.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)];
@@ -84,28 +98,48 @@ for (const folder of skillFolders) {
     }
   }
 
-  // Check each reference file for deprecated strings and valid links
-  for (const refFile of refFiles) {
-    const refFilePath = path.join(refsDir, refFile);
-    if (fs.statSync(refFilePath).isFile()) {
-      const refContent = fs.readFileSync(refFilePath, 'utf-8');
-      if (legacyServerPattern.test(refContent)) {
-        console.error(`❌ [FAIL] Outdated reference 'ygoprodeck-mcp-server' found in: skills/${folder}/references/${refFile}`);
-        hasError = true;
+  // Check each reference file for deprecated strings, valid links, and archetype schemas
+  for (const refFilePath of allRefFiles) {
+    const relRefPath = path.relative(skillPath, refFilePath);
+    const refContent = fs.readFileSync(refFilePath, 'utf-8');
+
+    if (legacyServerPattern.test(refContent)) {
+      console.error(`❌ [FAIL] Outdated reference 'ygoprodeck-mcp-server' found in: skills/${folder}/${relRefPath}`);
+      hasError = true;
+    }
+
+    // Check relative links inside reference markdown files as well
+    if (refFilePath.endsWith('.md')) {
+      const refFileDir = path.dirname(refFilePath);
+      const refLinkMatches = [...refContent.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)];
+      for (const rMatch of refLinkMatches) {
+        const rLink = rMatch[2].trim();
+        if (rLink.startsWith('http://') || rLink.startsWith('https://') || rLink.startsWith('#')) {
+          continue;
+        }
+        const resolvedRefLink = path.resolve(refFileDir, rLink);
+        if (!fs.existsSync(resolvedRefLink)) {
+          console.error(`❌ [FAIL] Broken link in skills/${folder}/${relRefPath}: ${rLink} (resolved: ${resolvedRefLink})`);
+          brokenLinks++;
+          hasError = true;
+        }
       }
 
-      // Check relative links inside reference markdown files as well
-      if (refFile.endsWith('.md')) {
-        const refLinkMatches = [...refContent.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)];
-        for (const rMatch of refLinkMatches) {
-          const rLink = rMatch[2].trim();
-          if (rLink.startsWith('http://') || rLink.startsWith('https://') || rLink.startsWith('#')) {
-            continue;
-          }
-          const resolvedRefLink = path.resolve(refsDir, rLink);
-          if (!fs.existsSync(resolvedRefLink)) {
-            console.error(`❌ [FAIL] Broken link in skills/${folder}/references/${refFile}: ${rLink} (resolved: ${resolvedRefLink})`);
-            brokenLinks++;
+      // If this is an archetype profile (not README or _template), validate RFC schema sections
+      if (refFilePath.includes('references' + path.sep + 'archetypes') &&
+          !refFilePath.endsWith('README.md') &&
+          !refFilePath.endsWith('_template.md')) {
+        const requiredSections = [
+          '## 1. Canonical Engine Core',
+          '## 2. Functional Taxonomy',
+          '## 3. End-Board Routing',
+          '## 4.',
+          '## 5. Chokepoints',
+          '## 6. Hypergeometric'
+        ];
+        for (const sec of requiredSections) {
+          if (!refContent.includes(sec)) {
+            console.error(`❌ [FAIL] Missing required section '${sec}' in archetype profile: ${relRefPath}`);
             hasError = true;
           }
         }
@@ -116,7 +150,7 @@ for (const folder of skillFolders) {
   if (brokenLinks === 0) {
     console.log(`✅ [PASS] skills/${folder}`);
     console.log(`   - SKILL.md: valid frontmatter ('${skillName}')`);
-    console.log(`   - References: ${refFiles.length} files verified on disk`);
+    console.log(`   - References: ${allRefFiles.length} files verified on disk`);
     console.log(`   - Markdown Links: verified resolvable within monorepo`);
     console.log(`   - Architecture Alignment: ygoprodeck-mcp & ADR traceability verified\n`);
   }

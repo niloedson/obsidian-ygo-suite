@@ -1,6 +1,6 @@
 ---
 name: ygo-deck-architect
-description: Competitive Yu-Gi-Oh! deck construction and probability engine. Evaluates both Advanced and Genesys formats, ingests raw .ydk decklists, enforces >90% opening consistency via hypergeometric math, parses functional card taxonomy (starters, extenders, tech, bricks) with pile-deck multi-engine awareness, tracks Genesys 100-point budgets and zero-Link/zero-Pendulum compliance, generates probability graphs, applies the asymmetric hand size axiom, and exports simulator-ready .ydk files.
+description: Competitive Yu-Gi-Oh! deck construction and probability engine. Evaluates both Advanced and Genesys formats, ingests raw .ydk decklists, processes official Konami (KDE) tournament decklist PDFs (bidirectional filling, arithmetic discrepancy auditing, and .ydk conversion), enforces >90% opening consistency via hypergeometric math, parses functional card taxonomy (starters, extenders, tech, bricks) with pile-deck multi-engine awareness, tracks Genesys 100-point budgets and zero-Link/zero-Pendulum compliance, generates probability graphs, applies the asymmetric hand size axiom, and exports simulator-ready .ydk files.
 ---
 
 # `ygo-deck-architect`: Mathematical Deck Construction Engine
@@ -33,6 +33,12 @@ You are a competitive Yu-Gi-Oh! Deck Architect and Probability Engineer. Your ob
      * **Mechanical Bans:** Immediately flags and rejects any **Link Monsters** or **Pendulum Monsters** across Main, Extra, and Side decks.
      * **The 100-Point Budget:** Evaluates total point cost across all 70-to-90 cards ($\sum \text{Points} \le 100$) using the `ygoprodeck-mcp` tool `get_genesys_points`. An audit must include an itemized point breakdown and warn if the budget is breached.
      * **Slower Tempo & 0-Point Core Maximization:** Since generic staples cost points, prioritizes in-engine 0-point starters and interaction, budgeting 15–25 points for dedicated Sideboard silver bullets.
+8. **Official Konami (KDE) Tournament Decklist Lifecycle:**
+   * **Generation & Form Filling:** Ingest `.ydk` decklists or JSON models, auto-classify Main Deck cards into Monsters, Spells, and Traps using the local database `cards.db`, enforce slot limits (18 monsters, 18 spells, 18 traps, 15 extra, 15 side), compute all section totals, and populate all 183 PDF form fields in `references/KDE_DeckList.pdf` with `/NeedAppearances: True`.
+   * **Ingestion & Arithmetic Discrepancy Auditing:** Parse existing filled KDE PDF sheets, execute double-entry arithmetic audits ($\Delta = \sum \text{Count}_i - \text{Total}_{\text{Recorded}}$) to protect against KDE Tournament Policy Section IX Deck Error penalties (Game Loss/DQ), verify tournament bounds (40–60 Main, $\le 15$ Extra/Side, $\le 3$ copies), resolve passcodes, and convert to simulator `.ydk`.
+   * **Deterministic CLI Tooling:** Execute the bundled KDE engine for all PDF generation and inspection:
+     `python skills/ygo-deck-architect/scripts/kde_decklist.py fill --ydk <deck.ydk> --output <out.pdf> [options]`
+     `python skills/ygo-deck-architect/scripts/kde_decklist.py read <decklist.pdf> [--ydk-out <out.ydk>]`
 
 ---
 
@@ -118,6 +124,8 @@ Opening 1+ Hard Brick:     [███                      ] 12.5%
 ## 4. Reference Library & Architecture Provenance
 
 Refer to the bundled reference files in `references/` for detailed calculations:
+* [`kde_decklist_guide.md`](references/kde_decklist_guide.md): Specifications for official Konami 183-field AcroForm PDF standard, slot capacity limits, discrepancy auditing, and .ydk conversion.
+* [`KDE_DeckList.pdf`](references/KDE_DeckList.pdf): Official empty Konami Digital Entertainment Decklist AcroForm PDF template.
 * [`genesys_format_architecture.md`](references/genesys_format_architecture.md): Specifications for Genesys 100-point budget, mechanical bans (Links/Pendulums), 0-point engines, and tempo heuristics.
 * [`ydk_handling_guide.md`](references/ydk_handling_guide.md): Specifications for .ydk syntax, passcode resolution, pile deck clustering, and export layout.
 * [`hypergeometric_matrices.md`](references/hypergeometric_matrices.md): Pre-computed lookup tables for 40, 42, 45, 50, and 60-card decks.
@@ -128,6 +136,7 @@ Refer to the bundled reference files in `references/` for detailed calculations:
 ### Monorepo Architecture & Data Layer Integration
 * **Deterministic MCP Data Layer (`mcp-servers/ygoprodeck`):** Connects to the local-first SQLite server (`ygoprodeck-mcp`) providing tools `get_card_details`, `check_banlist`, `get_genesys_points`, `get_top_tech_cards`, `get_tournament_decklists`, and `evaluate_tech_counters`.
 * **Design Provenance & ADRs:**
+  * [ADR-005: Konami Official Tournament Decklist (KDE) Engine](../../docs/decisions/ADR-005-kde-decklist-support.md)
   * [ADR-002: Competitive Deck Architecture & Hypergeometric Probability Engine](../../docs/decisions/ADR-002-deck-architect-skill.md)
   * [ADR-001: Air-Gapped, Local-First MCP Server Architecture](../../docs/decisions/ADR-001-hardened-mcp-server.md)
   * [ADR-004: Monorepo Architecture, Git Bloat Protection & Obsidian Branding](../../docs/decisions/ADR-004-root-monorepo-structure.md)

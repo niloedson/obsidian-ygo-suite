@@ -41,6 +41,11 @@ This directory preserves the **Architecture Decision Records (ADRs)** and design
 |   | Monorepo Governance   | ----------> | ADR-004: Monorepo     | -------> | Root Workspace |   |
 |   | & Obsidian Branding   |             | Architecture & Layout |          | & CI/CD Config |   |
 |   +-----------------------+             +-----------------------+          +----------------+   |
+|                                                     |                                           |
+|   +-----------------------+             +-----------------------+          +----------------+   |
+|   | Sanctioned Tournament | ----------> | ADR-005: Konami KDE   | -------> | skills/ygo-    |   |
+|   | Registration & Checks |             | Decklist Engine       |          | deck-architect |   |
+|   +-----------------------+             +-----------------------+          +----------------+   |
 |                                                                                                 |
 +-------------------------------------------------------------------------------------------------+
 ```
@@ -56,3 +61,4 @@ This directory preserves the **Architecture Decision Records (ADRs)** and design
 | [ADR-002](./ADR-002-deck-architect-skill.md) | **Competitive Deck Architecture & Hypergeometric Engine** | Enforces $>90\%$ opening consistency, the Asymmetric Hand Size Axiom ($n=5$ vs $n=6$), and Genesys points. | Accepted |
 | [ADR-003](./ADR-003-judge-skill.md) | **Deterministic PSCT Adjudication & Rulings Engine** | Mandates 4-step syntactic PSCT trace, backward chain resolution, TCG vs OCG matrix, and log parsing. | Accepted |
 | [ADR-004](./ADR-004-root-monorepo-structure.md) | **Monorepo Architecture, Git Hygiene & Obsidian Branding** | Unifies skills and MCP server in a single repo, prevents 100MB DB bloat in Git, and brands for Obsidian. | Accepted |
+| [ADR-005](./ADR-005-kde-decklist-support.md) | **Konami Official Tournament Decklist (KDE) Engine** | Bi-directional AcroForm PDF lifecycle, double-entry arithmetic discrepancy auditing, and .ydk conversion. | Accepted |

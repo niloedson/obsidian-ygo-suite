@@ -1,13 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getDbConnection, getDataDir, initDbSchema } from "../db/connection.js";
+import {
+  checkRateLimitLock,
+  getCrawlerHeaders,
+  handleRateLimitResponse,
+  sleep
+} from "./common.js";
 
 const TOP_ARCHETYPES_URL = "https://ygoprodeck.com/api/tournament/getTopArchetypes.php";
 const TOURNAMENTS_URL = "https://ygoprodeck.com/api/tournament/getTournaments.php";
 const TOURNAMENT_DETAILS_URL = "https://ygoprodeck.com/api/tournament/getTournament.php";
 const DECK_PAGE_BASE = "https://ygoprodeck.com/deck/";
-const LOCK_FILE_NAME = ".rate_limit_lock";
-const LOCK_DURATION_MS = 70 * 60 * 1000;
 
 // Allow self-signed / enterprise certificates if configured or in dev
 if (!process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
@@ -144,7 +148,7 @@ export async function syncTournamentDecks(
     }
 
     if (res.status === 429 || res.status === 403) {
-      triggerRateLimitLock(dataDir, `Upstream returned HTTP ${res.status} during tournament detail sync.`);
+      handleRateLimitResponse(res, dataDir, "tournament detail sync");
       process.exit(1);
     }
 
@@ -199,7 +203,7 @@ export async function syncTournamentDecks(
       }
 
       if (deckRes.status === 429 || deckRes.status === 403) {
-        triggerRateLimitLock(dataDir, `Upstream returned HTTP ${deckRes.status} during deck sync.`);
+        handleRateLimitResponse(deckRes, dataDir, "deck sync");
         process.exit(1);
       }
 
@@ -283,44 +287,6 @@ export async function syncTournamentDecks(
   return totalDecksSynced;
 }
 
-function checkRateLimitLock(dataDir: string): void {
-  const lockPath = path.join(dataDir, LOCK_FILE_NAME);
-  if (fs.existsSync(lockPath)) {
-    try {
-      const lockData = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
-      const remainingMs = lockData.unlockTimestamp - Date.now();
-      if (remainingMs > 0) {
-        const remainingMin = Math.ceil(remainingMs / 60000);
-        console.error(
-          `\n[FATAL] Active Rate-Limit Lockfile detected!\n` +
-          `YGOPRODeck temporary ban protection is active. Please wait ${remainingMin} more minute(s) before attempting another sync.`
-        );
-        process.exit(1);
-      } else {
-        fs.unlinkSync(lockPath);
-      }
-    } catch {
-      fs.unlinkSync(lockPath);
-    }
-  }
-}
-
-function triggerRateLimitLock(dataDir: string, reason: string): void {
-  const lockPath = path.join(dataDir, LOCK_FILE_NAME);
-  const lockData = {
-    lockedAt: new Date().toISOString(),
-    unlockTimestamp: Date.now() + LOCK_DURATION_MS,
-    reason
-  };
-  fs.writeFileSync(lockPath, JSON.stringify(lockData, null, 2), "utf-8");
-  console.error(
-    `\n[CIRCUIT BREAKER TRIGGERED] ${reason}\n` +
-    `Lockfile written to "${lockPath}". Network access paused for 70 minutes to protect your IP from blacklisting.`
-  );
-}
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export async function runTournamentSync(): Promise<void> {
   const dataDir = getDataDir();
   console.log(`[ygo-tournament-sync] Starting tournament & meta synchronization...`);
@@ -384,7 +350,7 @@ export async function runTournamentSync(): Promise<void> {
     }
 
     if (res.status === 429 || res.status === 403) {
-      triggerRateLimitLock(dataDir, `Upstream returned HTTP ${res.status} during top archetypes sync.`);
+      handleRateLimitResponse(res, dataDir, "top archetypes sync");
       process.exit(1);
     }
 
@@ -463,7 +429,7 @@ export async function runTournamentSync(): Promise<void> {
     }
 
     if (res.status === 429 || res.status === 403) {
-      triggerRateLimitLock(dataDir, `Upstream returned HTTP ${res.status} during tournaments sync.`);
+      handleRateLimitResponse(res, dataDir, "tournaments sync");
       process.exit(1);
     }
 

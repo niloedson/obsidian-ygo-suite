@@ -16,7 +16,7 @@ on:
 
 jobs:
   validate:
-    name: Verify Skill Frontmatter & References
+    name: Verify Skills, References & Python Engines
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -27,5 +27,22 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: pip install pypdf
+
       - name: Run Skills Validator
         run: node scripts/validate-skills.mjs
+
+      - name: Run Hypergeometric Math Tests
+        run: python skills/ygo-deck-architect/scripts/calculate_odds.py --test
+
+      - name: Run KDE Decklist Engine Tests
+        run: python skills/ygo-deck-architect/scripts/kde_decklist.py --test
+
+      - name: Run Dueling Book Log Parser Tests
+        run: python skills/ygo-judge/scripts/test_log_parser.py

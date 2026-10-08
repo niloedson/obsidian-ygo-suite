@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 import { getDbConnection, getDbPath } from "./db/connection.js";
 import {
   queryBanlist,
@@ -467,6 +468,59 @@ server.resource(
           uri: uri.href,
           mimeType: "application/json",
           text: JSON.stringify(meta, null, 2)
+        }
+      ]
+    };
+  }
+);
+
+// ------------------------------------------
+// Prompts
+// ------------------------------------------
+server.prompt(
+  "deck-audit",
+  "Request a tournament-grade hypergeometric deck audit with probability scorecards, pile-deck engine clustering, and .ydk validation.",
+  {
+    decklist: z.string().describe("Raw .ydk content or card name list"),
+    format: z.string().optional().describe("Tournament format (e.g. TCG, OCG, Genesys)")
+  },
+  async ({ decklist, format }) => {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Please perform a comprehensive deck audit for the following ${format || "TCG"} decklist. ` +
+              `Calculate exact opening probabilities (Turn 1 starters n=5, Turn 0 hand traps n=5, Turn 2 breakers n=6), ` +
+              `apply the Asymmetric Hand Size Axiom, classify cards using mandatory taxonomy, audit Genesys point budget if applicable, ` +
+              `and render an ASCII probability bar chart.\n\nDecklist:\n${decklist}`
+          }
+        }
+      ]
+    };
+  }
+);
+
+server.prompt(
+  "ruling-arbitration",
+  "Request an authoritative 4-step PSCT ruling breakdown and chain trace for a disputed card interaction or Dueling Book match log.",
+  {
+    interaction: z.string().describe("Description of card interaction or raw Dueling Book duel log transcript"),
+    format: z.string().optional().describe("Jurisdiction (TCG or OCG/Master Duel)")
+  },
+  async ({ interaction, format }) => {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Please arbitrate this ruling question under ${format || "TCG"} rules. ` +
+              `Use the 4-step adjudication protocol: (1) Location & Trigger Validation, (2) Timing Classification (When vs If), ` +
+              `(3) Cost & Targeting Verification, (4) Conjunction Resolution & Backward Chain Tracing. ` +
+              `Deconstruct all effects into [Condition] : [Cost/Target] ; [Effect].\n\nIncident/Interaction:\n${interaction}`
+          }
         }
       ]
     };

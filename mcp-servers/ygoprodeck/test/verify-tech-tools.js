@@ -1,5 +1,6 @@
 import assert from "node:assert";
-import { getDbConnection, initDbSchema } from "../dist/db/connection.js";
+import { DatabaseSync } from "node:sqlite";
+import { initDbSchema } from "../dist/db/connection.js";
 import {
   queryEvaluateTechCounters,
   queryTopTechCards,
@@ -10,7 +11,9 @@ import { parseDeckHtml } from "../dist/cli/syncTournaments.js";
 async function runTests() {
   console.log("=== Yu-Gi-Oh! Top-Cut Decks & Tech Tools Verification ===");
 
-  const db = getDbConnection(false);
+  // Use an isolated in-memory database to prevent test pollution from local cards.db
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON;");
   initDbSchema(db);
 
   // ----------------------------------------------------

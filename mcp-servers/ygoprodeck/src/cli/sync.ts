@@ -1,10 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getDbConnection, getDataDir, initDbSchema } from "../db/connection.js";
+import {
+  checkRateLimitLock,
+  getCrawlerHeaders,
+  handleRateLimitResponse
+} from "./common.js";
 
 const BULK_API_URL = "https://db.ygoprodeck.com/api/v7/cardinfo.php";
-const LOCK_FILE_NAME = ".rate_limit_lock";
-const LOCK_DURATION_MS = 70 * 60 * 1000; // 70 minutes (safety buffer over 60 min ban)
 
 interface YgoProDeckCard {
   id: number;
@@ -33,42 +36,6 @@ interface YgoProDeckResponse {
   data: YgoProDeckCard[];
 }
 
-function checkRateLimitLock(dataDir: string): void {
-  const lockPath = path.join(dataDir, LOCK_FILE_NAME);
-  if (fs.existsSync(lockPath)) {
-    try {
-      const lockData = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
-      const remainingMs = lockData.unlockTimestamp - Date.now();
-      if (remainingMs > 0) {
-        const remainingMin = Math.ceil(remainingMs / 60000);
-        console.error(
-          `\n[FATAL] Active Rate-Limit Lockfile detected!\n` +
-          `YGOPRODeck temporary ban protection is active. Please wait ${remainingMin} more minute(s) before attempting another sync.`
-        );
-        process.exit(1);
-      } else {
-        fs.unlinkSync(lockPath);
-      }
-    } catch {
-      fs.unlinkSync(lockPath);
-    }
-  }
-}
-
-function triggerRateLimitLock(dataDir: string, reason: string): void {
-  const lockPath = path.join(dataDir, LOCK_FILE_NAME);
-  const lockData = {
-    lockedAt: new Date().toISOString(),
-    unlockTimestamp: Date.now() + LOCK_DURATION_MS,
-    reason
-  };
-  fs.writeFileSync(lockPath, JSON.stringify(lockData, null, 2), "utf-8");
-  console.error(
-    `\n[CIRCUIT BREAKER TRIGGERED] ${reason}\n` +
-    `Lockfile written to "${lockPath}". Network access paused for 70 minutes to protect your IP from blacklisting.`
-  );
-}
-
 export async function runSync(): Promise<void> {
   const dataDir = getDataDir();
   console.log(`[ygo-sync] Starting local database synchronization...`);
@@ -85,12 +52,7 @@ export async function runSync(): Promise<void> {
   const etagRow = db.prepare("SELECT value FROM sync_metadata WHERE key = 'etag'").get() as { value: string } | undefined;
   const currentEtag = etagRow ? etagRow.value : null;
 
-  const headers: Record<string, string> = {
-    "User-Agent": "ygo-card-mcp-sync/1.0 (local-first card crawler; https://github.com/)"
-  };
-  if (currentEtag) {
-    headers["If-None-Match"] = currentEtag;
-  }
+  const headers = getCrawlerHeaders(currentEtag);
 
   console.log(`[ygo-sync] Fetching bulk card payload from YGOPRODeck...`);
   if (currentEtag) {
@@ -107,10 +69,7 @@ export async function runSync(): Promise<void> {
 
   // Handle rate-limiting status codes (429 or 403)
   if (response.status === 429 || response.status === 403) {
-    triggerRateLimitLock(
-      dataDir,
-      `Upstream returned HTTP ${response.status} (${response.statusText}). Rate limit exceeded or access forbidden.`
-    );
+    handleRateLimitResponse(response, dataDir, "bulk card sync");
     process.exit(1);
   }
 

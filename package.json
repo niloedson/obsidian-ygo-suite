@@ -12,6 +12,8 @@
     "test": "npm run test --workspaces",
     "test:math": "python skills/ygo-deck-architect/scripts/calculate_odds.py --test",
     "test:kde": "python skills/ygo-deck-architect/scripts/kde_decklist.py --test",
+    "test:judge": "python skills/ygo-judge/scripts/test_log_parser.py",
+    "test:all": "npm test && npm run test:math && npm run test:kde && npm run test:judge && npm run lint:skills",
     "sync": "npm run sync --workspace=ygoprodeck-mcp",
     "sync:tournaments": "npm run sync:tournaments --workspace=ygoprodeck-mcp",
     "sync:all": "npm run sync:all --workspace=ygoprodeck-mcp",

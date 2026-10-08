@@ -34,7 +34,11 @@ logs/
 
 # User decklists & generated audit reports
 decks/
-reports/
+reports/deck-audits/
+reports/*.pdf
+!reports/
+!reports/README.md
+!reports/architecture/**
 
 # Local IDE & AI Agent configurations
 .gemini/

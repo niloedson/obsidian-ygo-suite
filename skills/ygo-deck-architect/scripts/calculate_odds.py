@@ -139,9 +139,150 @@ def parse_condition_string(cond_str: str) -> Callable[[Dict[str, int]], bool]:
     return predicate
 
 
+def calculate_going_second_quality(
+    deck_size: int,
+    starters: int,
+    hand_traps: int,
+    extenders: int = 0,
+    board_breakers: int = 0,
+) -> Tuple[float, float]:
+    """
+    Evaluates going-second quality hands under the Asymmetric Hand Size Axiom:
+      - Basic Quality: HT >= 1 in 5-card Turn 0 hand AND Starter >= 1 in 6-card hand.
+      - Resilient Quality: HT >= 1 in 5-card Turn 0 hand AND Starter >= 1 in 6-card hand
+        AND (Extender >= 1 OR Breaker >= 1 in 6-card hand).
+    Returns (p_basic, p_resilient) as exact percentages.
+    """
+    if hand_traps <= 0 or starters <= 0:
+        return 0.0, 0.0
+
+    K_s = starters
+    K_ht = hand_traps
+    K_e = extenders
+    K_b = board_breakers
+    K_other = deck_size - (K_s + K_ht + K_e + K_b)
+    if K_other < 0:
+        K_other = 0
+
+    denom = math.comb(deck_size, 5) * (deck_size - 5)
+    if denom <= 0:
+        return 0.0, 0.0
+
+    basic_success = 0
+    resilient_success = 0
+
+    # Partition 5 cards drawn on Turn 0
+    for s5 in range(min(5, K_s) + 1):
+        for ht5 in range(min(5 - s5, K_ht) + 1):
+            if ht5 == 0:
+                continue  # Must interact on Turn 0 (Asymmetric Hand Axiom)
+            for e5 in range(min(5 - s5 - ht5, K_e) + 1):
+                for b5 in range(min(5 - s5 - ht5 - e5, K_b) + 1):
+                    rem5 = 5 - (s5 + ht5 + e5 + b5)
+                    if rem5 < 0 or rem5 > K_other:
+                        continue
+                    ways5 = (
+                        math.comb(K_s, s5)
+                        * math.comb(K_ht, ht5)
+                        * math.comb(K_e, e5)
+                        * math.comb(K_b, b5)
+                        * math.comb(K_other, rem5)
+                    )
+                    # 6th card drawn on Turn 2
+                    rem_pools = {
+                        "s": K_s - s5,
+                        "ht": K_ht - ht5,
+                        "e": K_e - e5,
+                        "b": K_b - b5,
+                        "other": K_other - rem5,
+                    }
+                    for card_type, count in rem_pools.items():
+                        if count <= 0:
+                            continue
+                        s6 = s5 + (1 if card_type == "s" else 0)
+                        e6 = e5 + (1 if card_type == "e" else 0)
+                        b6 = b5 + (1 if card_type == "b" else 0)
+
+                        if s6 >= 1:
+                            basic_success += ways5 * count
+                            if (e6 >= 1 or b6 >= 1):
+                                resilient_success += ways5 * count
+
+    p_basic = (basic_success / denom) * 100.0
+    p_resilient = (resilient_success / denom) * 100.0
+    return min(100.0, p_basic), min(100.0, p_resilient)
+
+
+def get_recommended_hand_traps(deck_size: int, target_prob: float = 0.85) -> int:
+    """Finds minimum hand traps needed for P(HT >= 1) >= target_prob at n=5."""
+    for k in range(1, deck_size + 1):
+        if hypergeom_cdf_ge(1, deck_size, k, 5) >= target_prob:
+            return k
+    return deck_size
+
+
+def get_optimal_ns_range(N: int) -> Tuple[int, int, int]:
+    """
+    Finds the optimal Normal Summon allocation for a deck of size N:
+    Maximizes P(NS = 1) while strictly keeping P(NS >= 2) <= 20.0%.
+    Returns (min_ns, max_ns, peak_ns).
+    """
+    valid = []
+    for k in range(1, min(25, N + 1)):
+        p1 = hypergeom_pmf(1, N, k, 5) * 100.0
+        p2 = hypergeom_cdf_ge(2, N, k, 5) * 100.0
+        if p2 <= 20.0:
+            valid.append((k, p1, p2))
+    if not valid:
+        return 4, 6, 6
+    best = max(valid, key=lambda x: x[1])
+    min_k = min(x[0] for x in valid if x[1] >= best[1] - 4.0)
+    max_k = best[0]
+    return min_k, max_k, best[0]
+
+
+def calculate_brick_dilution_scenarios(
+    current_deck_size: int,
+    starters: int,
+    normal_summons: int,
+    garnets: int,
+    hand_traps: int = 0,
+) -> List[Dict[str, Any]]:
+    """
+    Evaluates deck expansion scenarios to dilute hard bricks, computing the
+    exact rebalanced starter, normal summon, and hand trap requirements.
+    """
+    if garnets <= 0:
+        return []
+
+    targets = [sz for sz in [42, 45, 50, 60] if sz > current_deck_size]
+    base_garnet_risk = hypergeom_cdf_ge(1, current_deck_size, garnets, 5) * 100.0
+    scenarios = []
+
+    for N_tgt in targets:
+        g_risk = hypergeom_cdf_ge(1, N_tgt, garnets, 5) * 100.0
+        req_s = get_recommended_starters(N_tgt)
+        add_s = max(0, req_s - starters)
+        ns_min, ns_max, ns_peak = get_optimal_ns_range(N_tgt)
+        req_ht = get_recommended_hand_traps(N_tgt, 0.85)
+        scenarios.append({
+            "deck_size": N_tgt,
+            "garnet_risk": round(g_risk, 1),
+            "risk_reduction": round(base_garnet_risk - g_risk, 1),
+            "required_starters": req_s,
+            "add_starters": add_s,
+            "ns_range": f"{ns_min}–{ns_max}",
+            "ns_peak": ns_peak,
+            "req_hand_traps": req_ht,
+        })
+
+    return scenarios
+
+
 def run_deck_audit(
     deck_size: int,
     starters: int,
+    normal_summons: int = 0,
     extenders: int = 0,
     hand_traps: int = 0,
     board_breakers: int = 0,
@@ -155,6 +296,7 @@ def run_deck_audit(
     """
     pools = {
         "starters": starters,
+        "normal_summons": normal_summons,
         "extenders": extenders,
         "hand_traps": hand_traps,
         "board_breakers": board_breakers,
@@ -172,6 +314,13 @@ def run_deck_audit(
     p_starter_t1 = hypergeom_cdf_ge(1, deck_size, starters, 5) * 100.0
     p_starter_ge2_t1 = hypergeom_cdf_ge(2, deck_size, starters, 5) * 100.0
     p_brick_t1 = hypergeom_pmf(0, deck_size, starters, 5) * 100.0
+
+    # Normal Summon Contention Analysis (n = 5)
+    # Players only have 1 Normal Summon per turn.
+    # Goal: Maximize P(NS == 1), keep P(NS >= 2) <= 20% to avoid conflicting unplayable cards.
+    p_ns_0 = hypergeom_pmf(0, deck_size, normal_summons, 5) * 100.0 if normal_summons > 0 else 0.0
+    p_ns_1 = hypergeom_pmf(1, deck_size, normal_summons, 5) * 100.0 if normal_summons > 0 else 0.0
+    p_ns_ge2 = hypergeom_cdf_ge(2, deck_size, normal_summons, 5) * 100.0 if normal_summons > 0 else 0.0
 
     # Turn 0 Hand Traps (Asymmetric Axiom: n = 5)
     p_ht_ge1_t0 = hypergeom_cdf_ge(1, deck_size, hand_traps, 5) * 100.0 if hand_traps > 0 else 0.0
@@ -217,6 +366,24 @@ def run_deck_audit(
             lambda d: d.get("starters", 0) >= 1 and d.get("extenders", 0) >= 1,
         ) * 100.0
 
+    # Going-Second Quality Hand Analysis (Turn 0 Interruption + Turn 2 Engine Push)
+    p_g2_basic, p_g2_resilient = calculate_going_second_quality(
+        deck_size=deck_size,
+        starters=starters,
+        hand_traps=hand_traps,
+        extenders=extenders,
+        board_breakers=board_breakers,
+    )
+
+    # Brick Dilution Scenarios (if garnets > 0)
+    dilution_scenarios = calculate_brick_dilution_scenarios(
+        current_deck_size=deck_size,
+        starters=starters,
+        normal_summons=normal_summons,
+        garnets=garnets,
+        hand_traps=hand_traps,
+    )
+
     # Custom Condition Probability (if requested)
     custom_result = None
     if custom_condition:
@@ -235,11 +402,15 @@ def run_deck_audit(
         "standards": {
             "target_90_pct_achieved": p_starter_t1 >= 90.0,
             "recommended_starters_for_90": get_recommended_starters(deck_size),
+            "normal_summon_contention_warning": p_ns_ge2 > 20.0,
         },
         "probabilities": {
             "starter_t1_ge1": round(p_starter_t1, 2),
             "starter_t1_ge2": round(p_starter_ge2_t1, 2),
             "brick_t1_0_starters": round(p_brick_t1, 2),
+            "normal_summon_0": round(p_ns_0, 2),
+            "normal_summon_1_optimal": round(p_ns_1, 2),
+            "normal_summon_ge2_clash": round(p_ns_ge2, 2),
             "hand_trap_t0_ge1": round(p_ht_ge1_t0, 2),
             "hand_trap_t0_ge2": round(p_ht_ge2_t0, 2),
             "defensive_tech_t1_ge1": round(p_defensive_ge1_t1, 2),
@@ -248,9 +419,13 @@ def run_deck_audit(
             "net_playable_starter_no_garnet": round(p_net_playable, 2),
             "starter_plus_hand_trap_t0": round(p_starter_plus_ht, 2),
             "starter_plus_extender_t1": round(p_starter_plus_extender, 2),
+            "g2_quality_basic": round(p_g2_basic, 2),
+            "g2_quality_resilient": round(p_g2_resilient, 2),
         },
         "ascii_graphs": {
             "starter_ge1": render_ascii_bar(p_starter_t1),
+            "normal_summon_1": render_ascii_bar(p_ns_1) if normal_summons > 0 else "",
+            "normal_summon_ge2": render_ascii_bar(p_ns_ge2) if normal_summons > 0 else "",
             "hand_trap_ge1": render_ascii_bar(p_ht_ge1_t0),
             "hand_trap_ge2": render_ascii_bar(p_ht_ge2_t0),
             "defensive_ge1": render_ascii_bar(p_defensive_ge1_t1),
@@ -258,7 +433,9 @@ def run_deck_audit(
             "garnet_ge1": render_ascii_bar(p_garnet_ge1_t1),
             "net_playable": render_ascii_bar(p_net_playable),
             "starter_plus_ht": render_ascii_bar(p_starter_plus_ht),
+            "g2_quality_resilient": render_ascii_bar(p_g2_resilient),
         },
+        "brick_dilution_scenarios": dilution_scenarios,
         "custom_query": custom_result,
     }
 
@@ -291,6 +468,19 @@ def format_text_report(audit: Dict[str, Any]) -> str:
         f"• Opening ≥1 Starter (Turn 1, 5 cards):       {p['starter_t1_ge1']:5.1f}%  [{status_90}]",
         f"• Opening ≥2 Starters (Turn 1, 5 cards):       {p['starter_t1_ge2']:5.1f}%",
         f"• Complete Starter Brick (0 Starters):        {p['brick_t1_0_starters']:5.1f}%",
+    ]
+
+    if p["normal_summon_1_optimal"] > 0 or p["normal_summon_0"] > 0:
+        ns_contention_tag = "  [⚠️ WARNING: HIGH CONTENTION >20%]" if p['normal_summon_ge2_clash'] > 20.0 else "  [★ HEALTHY CONTENTION ≤20%]"
+        lines.extend([
+            "",
+            f"[NORMAL SUMMON DISTRIBUTION & CONTENTION (Pool: {audit['parameters'].get('normal_summons', 0)} Cards)]",
+            f"• Zero Normal Summons (Starvation):           {p['normal_summon_0']:5.1f}%",
+            f"• Exactly 1 Normal Summon (Optimal Sweet Spot): {p['normal_summon_1_optimal']:5.1f}%",
+            f"• ≥2 Normal Summons (Conflicting/Dead in Hand): {p['normal_summon_ge2_clash']:5.1f}%{ns_contention_tag}",
+        ])
+
+    lines.extend([
         "",
         "[ASYMMETRIC GOING-SECOND & INTERACTION METRICS]",
         f"• Turn 0 Hand Trap Access (n = 5):",
@@ -300,16 +490,32 @@ def format_text_report(audit: Dict[str, Any]) -> str:
         f"• Turn 2 Board Breaker Access (n = 6):          {p['breaker_t2_ge1']:5.1f}%",
         f"• Garnet Draw Risk (Turn 1, n = 5):             {p['garnet_t1_ge1']:5.1f}%",
         "",
-        "[MULTIVARIATE JOINT METRICS]",
+        "[MULTIVARIATE JOINT METRICS & GOING-SECOND QUALITY]",
         f"• Net Playable Hand (Starter ≥1 & Garnet == 0): {p['net_playable_starter_no_garnet']:5.1f}%",
         f"• Starter + Hand Trap (Turn 0 Ready):          {p['starter_plus_hand_trap_t0']:5.1f}%",
         f"• Starter + Extender (Push Through Negate):    {p['starter_plus_extender_t1']:5.1f}%",
+    ])
+
+    if p["g2_quality_basic"] > 0:
+        lines.extend([
+            f"• G2 Basic Quality (HT ≥1 on T0 & Starter T2): {p['g2_quality_basic']:5.1f}%",
+            f"• G2 Resilient Quality (HT + Starter + Ext/Brk): {p['g2_quality_resilient']:5.1f}%",
+        ])
+
+    lines.extend([
         "",
         "[VISUAL PROBABILITY GRAPH]",
         f"Opening 1+ Starters (T1):  {g['starter_ge1']}",
+    ])
+
+    if p["normal_summon_1_optimal"] > 0:
+        lines.append(f"Normal Summon = 1 (Sweet):  {g['normal_summon_1']}")
+        lines.append(f"Normal Summon ≥2 (Clash):   {g['normal_summon_ge2']}")
+
+    lines.extend([
         f"Turn 0 Hand Trap ≥1 (T0):  {g['hand_trap_ge1']}",
         f"Turn 0 Hand Trap ≥2 (T0):  {g['hand_trap_ge2']}",
-    ]
+    ])
 
     if p["defensive_tech_t1_ge1"] > 0:
         lines.append(f"Turn 1 Defensive Tech (T1):{g['defensive_ge1']}")
@@ -320,6 +526,25 @@ def format_text_report(audit: Dict[str, Any]) -> str:
         f"Net Playable Hand (T1):    {g['net_playable']}",
         f"Starter + Hand Trap (T0):  {g['starter_plus_ht']}",
     ])
+
+    if p["g2_quality_resilient"] > 0:
+        lines.append(f"G2 Quality Hand (HT+S+E/B): {g['g2_quality_resilient']}")
+
+    scenarios = audit.get("brick_dilution_scenarios", [])
+    if scenarios:
+        lines.extend([
+            "",
+            f"[BRICK DILUTION & REBALANCING MATRIX (Pool: {audit['parameters'].get('garnets', 0)} Garnets in {audit['deck_size']} Cards)]",
+            "When hard bricks cannot be cut from the engine, expand deck size to dilute draw risk.",
+            "Crucial Rule: All added starters MUST be [STARTER-SS] (Spells/free bodies), NOT [STARTER-NS]!",
+            "",
+            "| Target Deck | Brick Risk | Reduction | Required Starters | Starters to Add* | Optimal NS Pool | Rebalanced HTs (≥85%) |",
+            "| :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
+        ])
+        for sc in scenarios:
+            lines.append(
+                f"| {sc['deck_size']} Cards | {sc['garnet_risk']:4.1f}% | -{sc['risk_reduction']:3.1f}% | {sc['required_starters']} Starters | +{sc['add_starters']} [STARTER-SS] | {sc['ns_range']} NS (Peak: {sc['ns_peak']}) | {sc['req_hand_traps']} Hand Traps |"
+            )
 
     if audit.get("custom_query"):
         cq = audit["custom_query"]
@@ -378,6 +603,27 @@ def run_self_tests() -> None:
     assert rec_45 == 16, f"Expected 16 for 45 cards, got {rec_45}"
     assert rec_60 == 22, f"Expected 22 for 60 cards, got {rec_60}"
     print(f"  [PASS] Recommended starters logic: 40->{rec_40}, 45->{rec_45}, 60->{rec_60}")
+
+    # Test 7: Normal Summon Probability & Contention Benchmark (40 Cards, 6 Normal Summons)
+    # P(NS = 1) = comb(6, 1) * comb(34, 4) / comb(40, 5) = 6 * 46376 / 658008 = 42.29%
+    # P(NS >= 2) = 15.42%
+    p_ns1 = round(hypergeom_pmf(1, 40, 6, 5) * 100.0, 1)
+    p_ns2 = round(hypergeom_cdf_ge(2, 40, 6, 5) * 100.0, 1)
+    assert p_ns1 == 42.3, f"Test 7 failed: Expected 42.3%, got {p_ns1}%"
+    assert p_ns2 == 15.4, f"Test 7 failed: Expected 15.4%, got {p_ns2}%"
+    print("  [PASS] Normal Summon Contention (40 Cards, 6 NS) -> NS=1: 42.3%, NS>=2: 15.4%")
+
+    # Test 8: Going-Second Quality Hand Calculation (40 Cards, 14 Starters, 12 HT, 6 Extenders, 3 Breakers)
+    q_basic, q_resilient = calculate_going_second_quality(40, 14, 12, 6, 3)
+    assert round(q_resilient, 1) == 61.7, f"Test 8 failed: Expected 61.7%, got {round(q_resilient, 1)}%"
+    print(f"  [PASS] Going-Second Quality Hand (40 Cards, 14S/12HT/6E/3B) -> Resilient: {round(q_resilient, 1)}%")
+
+    # Test 9: Brick Dilution Scenarios (40 Cards, 14 Starters, 6 NS, 2 Garnets, 12 HT)
+    dil_sc = calculate_brick_dilution_scenarios(40, 14, 6, 2, 12)
+    assert len(dil_sc) == 4, f"Expected 4 dilution targets, got {len(dil_sc)}"
+    assert dil_sc[1]["deck_size"] == 45 and dil_sc[1]["garnet_risk"] == 21.2 and dil_sc[1]["add_starters"] == 2
+    assert dil_sc[3]["deck_size"] == 60 and dil_sc[3]["garnet_risk"] == 16.1 and dil_sc[3]["add_starters"] == 8
+    print("  [PASS] Brick Dilution Scenarios: 40->45 (+2 Starters, risk: 21.2%), 40->60 (+8 Starters, risk: 16.1%)")
 
     print(">>> ALL MATHEMATICAL SELF-TESTS PASSED ACCURATELY! <<<")
 
@@ -445,6 +691,8 @@ def main() -> None:
     parser.add_argument("--ydk", type=str, default=None, help="Path to .ydk file or raw YDK text string")
     parser.add_argument("--starters", "-s", type=int, default=14, help="Primary 1-card / 1.5-card starters count")
     parser.add_argument("--starters-list", type=str, default=None, help="Comma-separated card passcodes for starters")
+    parser.add_argument("--normal-summons", "-ns", type=int, default=0, help="Normal Summon engine starters/monsters count")
+    parser.add_argument("--normal-summons-list", type=str, default=None, help="Comma-separated card passcodes for normal summons")
     parser.add_argument("--extenders", "-e", type=int, default=0, help="Extenders / secondary starters count")
     parser.add_argument("--extenders-list", type=str, default=None, help="Comma-separated card passcodes for extenders")
     parser.add_argument("--hand-traps", "-t", type=int, default=0, help="Turn 0 hand traps count (evaluated at n=5)")
@@ -455,6 +703,7 @@ def main() -> None:
     parser.add_argument("--defensive-list", type=str, default=None, help="Comma-separated card passcodes for defensive tech")
     parser.add_argument("--garnets", "-g", type=int, default=0, help="Hard brick / Garnet count")
     parser.add_argument("--garnets-list", type=str, default=None, help="Comma-separated card passcodes for garnets")
+    parser.add_argument("--dilution", action="store_true", help="Force evaluation and display of brick dilution scenarios")
     parser.add_argument("--categories", "-c", type=str, default=None, help="Arbitrary categories (e.g. 'engineA=8,engineB=6,traps=9')")
     parser.add_argument("--condition", type=str, default=None, help="Arbitrary boolean condition (e.g. 'starters>=1 and garnets==0')")
     parser.add_argument("--json", action="store_true", help="Output machine-readable JSON")
@@ -468,6 +717,7 @@ def main() -> None:
 
     deck_size = args.deck
     starters = args.starters
+    normal_summons = args.normal_summons
     extenders = args.extenders
     hand_traps = args.hand_traps
     breakers = args.breakers
@@ -481,6 +731,8 @@ def main() -> None:
             deck_size = len(main_cards)
             if args.starters_list:
                 starters = count_ids_in_list(args.starters_list, main_cards)
+            if args.normal_summons_list:
+                normal_summons = count_ids_in_list(args.normal_summons_list, main_cards)
             if args.extenders_list:
                 extenders = count_ids_in_list(args.extenders_list, main_cards)
             if args.hand_traps_list:
@@ -497,6 +749,7 @@ def main() -> None:
     audit = run_deck_audit(
         deck_size=deck_size,
         starters=starters,
+        normal_summons=normal_summons,
         extenders=extenders,
         hand_traps=hand_traps,
         board_breakers=breakers,

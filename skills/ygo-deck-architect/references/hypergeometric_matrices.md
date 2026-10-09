@@ -70,7 +70,48 @@ $$P(X \ge k) = \sum_{x=k}^{\min(n, K)} \frac{\binom{K}{x} \binom{N-K}{n-x}}{\bin
 
 ---
 
-## 6. Architectural Provenance & Monorepo Links
+## 6. Normal Summon Contention Matrix ($N = 40, n = 5$)
+
+Because players are limited to **one Normal Summon per turn**, opening multiple Normal Summon starters creates dead card contention in hand. The target is to maximize $P(NS = 1)$ while strictly capping $P(NS \ge 2) \le 20\%$.
+
+| Normal Summons ($K_{NS}$) | Zero NS $P(NS = 0)$ (Starvation) | Exactly 1 NS $P(NS = 1)$ (Optimal Sweet Spot) | $\ge 2$ NS $P(NS \ge 2)$ (Contention / Clashes) | Architectural Assessment |
+| :---: | :---: | :---: | :---: | :--- |
+| **3 Cards** | 66.2% | 30.1% | 3.6% | Under-allocated; severe NS starvation |
+| **4 Cards** | 57.3% | 35.8% | 6.9% | Minimum threshold; viable with SS starters |
+| **5 Cards** | 49.3% | 39.8% | 10.9% | Strong balance; 1-in-10 contention |
+| **6 Cards** | **42.3%** | **42.3%** | **15.4%** | **★ PEAK SWEET SPOT: Maximizes $P(NS=1)$ while $P(NS \ge 2) \le 16\%$** |
+| **7 Cards** | 36.1% | 43.3% | **20.6%** | **⚠️ Contention Breach: >20% hands hold clashing normal summons** |
+| **8 Cards** | 30.6% | 43.7% | 25.7% | High contention; 1 in 4 hands has dead cards |
+| **9 Cards** | 25.8% | 42.4% | 31.8% | Severe contention; almost 1 in 3 hands clashes |
+| **12 Cards** | 14.9% | 35.1% | 50.0% | Catastrophic contention; 50% of opening hands clash |
+
+## 7. Brick Dilution & Hypergeometric Rebalancing Matrices
+
+When an engine contains mandatory hard bricks (`[HARD-BRICK]` / Garnets) that cannot be cut (e.g. unsummonable tribute monsters, search-only traps, engine drivers), expanding the deck size dilutes the brick draw risk. To maintain tournament consistency, the deck must be rebalanced using the table below.
+
+### Garnet Draw Risk by Deck Size ($n = 5$)
+| Deck Size ($N$) | 1 Hard Brick ($P \ge 1$) | 2 Hard Bricks ($P \ge 1$) | 3 Hard Bricks ($P \ge 1$) | Net Draw Risk Status |
+| :---: | :---: | :---: | :---: | :--- |
+| **40 Cards** | **12.5%** | **23.7%** | **33.8%** | Baseline (1 brick is manageable; 2+ bricks severely impairs net hands) |
+| **42 Cards** | 11.9% | 22.6% | 32.2% | -1.1% brick risk reduction |
+| **45 Cards** | 11.1% | 21.2% | 30.4% | -2.5% brick risk reduction; accessible with minimal engine expansion |
+| **50 Cards** | 10.0% | 19.2% | 27.6% | -4.5% brick risk reduction; drops 2 bricks below 20% |
+| **60 Cards** | **8.3%** | **16.1%** | **23.3%** | **-7.6% brick risk reduction; maximum dilution for heavy multi-engine piles** |
+
+### Complete Rebalancing Blueprint by Expanded Deck Size
+| Target Deck Size ($N'$) | Required Starters ($K'$) for $>90\%$ | Added Starters Needed* | Optimal Normal Summons ($K'_{NS}$) | Contention Cap $P(NS \ge 2)$ | Rebalanced Hand Traps ($P \ge 85\%$) |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| **40 Cards** | 14 Starters | Base | 4–6 NS (Peak: 6) | 15.4% | 12 Hand Traps (85.1%) |
+| **42 Cards** | 15 Starters | +1 `[STARTER-SS]` | 5–7 NS (Peak: 7) | 18.8% | 13 Hand Traps (85.9%) |
+| **45 Cards** | 16 Starters | +2 `[STARTER-SS]` | 5–7 NS (Peak: 7) | 16.6% | 14 Hand Traps (85.8%) |
+| **50 Cards** | 18 Starters | +4 `[STARTER-SS]` | 6–8 NS (Peak: 8) | 17.6% | 16 Hand Traps (85.1%) |
+| **60 Cards** | 22 Starters | +8 `[STARTER-SS]` | 7–10 NS (Peak: 10) | 19.0% | 19 Hand Traps (85.1%) |
+
+*\*CRITICAL ARCHITECTURAL MANDATE:* All added starters must strictly be `[STARTER-SS]` (Spells, free bodies, non-normal summon extenders). Adding extra `[STARTER-NS]` increases normal summon clashes and defeats the mathematical benefit of deck dilution.
+
+---
+
+## 8. Architectural Provenance & Monorepo Links
 * **Deterministic Combinatorics Script:** [`../scripts/calculate_odds.py`](../scripts/calculate_odds.py) (execute via `python skills/ygo-deck-architect/scripts/calculate_odds.py`)
 * **ADR Design Record:** [ADR-002: Competitive Deck Architecture & Hypergeometric Probability Engine](../../../docs/decisions/ADR-002-deck-architect-skill.md)
 * **Monorepo Architecture:** [ADR-004: Monorepo Architecture, Git Bloat Protection & Obsidian Branding](../../../docs/decisions/ADR-004-root-monorepo-structure.md)

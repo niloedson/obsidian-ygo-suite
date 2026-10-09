@@ -11,11 +11,16 @@ Use a 25-character bar width (`█` = 4%, `▌` = 2%, `▎` = 1%):
 ================================================================================
 PROBABILITY DISTRIBUTION: [Metric Description]
 ================================================================================
-Turn 1 Starter (≥1 in 5):     [██████████████████████▌  ] 90.4% [>90% GOAL MET]
-Turn 0 Hand Trap (≥1 in 5):   [█████████████████████▎   ] 85.1%
-Turn 0 Hand Trap (≥2 in 5):   [███████████▉             ] 47.7%
-Turn 2 Breaker (≥1 in 6):     [████████████████▎        ] 65.0%
-Opening 1-of Hard Brick:      [███                      ] 12.5%
+Opening 1+ Starters (T1):    [█████████████████████▌  ] 90.0% [>90% GOAL MET]
+Normal Summon = 1 (Sweet):   [██████████▏             ] 42.3% [OPTIMAL NS ALLOCATION]
+Normal Summon ≥2 (Clash):    [███▋                    ] 15.4% [SAFE: <= 20%]
+Turn 0 Hand Trap ≥1 (T0):    [████████████████████▍   ] 85.1%
+Turn 0 Hand Trap ≥2 (T0):    [███████████▍            ] 47.7%
+Turn 2 Breaker ≥1 (T2):      [█████████▍              ] 39.4%
+Opening 1+ Hard Brick:       [███                     ] 12.5%
+Net Playable Hand (T1):      [███████████████████     ] 79.4%
+Starter + Hand Trap (T0):    [██████████████████      ] 75.4%
+G2 Quality Hand (HT+S+E/B):  [██████████████▊         ] 61.7%
 ================================================================================
 ```
 

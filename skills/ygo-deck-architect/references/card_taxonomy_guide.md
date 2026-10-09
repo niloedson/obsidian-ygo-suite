@@ -9,7 +9,9 @@ In modern Yu-Gi-Oh!, every card in a deck must serve an exact mathematical and s
 ### `[STARTER-NS]`: Normal Summon 1-Card Starter
 * **Definition:** A card that, upon Normal Summon, initiates a full engine combo line by itself.
 * **Examples:** *Snake-Eye Ash*, *Branded Aluber*, *Rescue-ACE Air Lifter*, *Tour Guide From the Underworld*.
-* **Rule:** Limit `[STARTER-NS]` to **4–6 cards per deck**. Opening multiple NS starters creates severe hand contention, as only one can be normal summoned per turn.
+* **Rule:** Maintain `[STARTER-NS]` at the mathematical sweet spot of **4–6 cards per deck** (in a 40-card list). Opening multiple NS starters creates severe hand contention, as only one monster can be normal summoned per turn.
+  - **Sweet Spot ($K_{NS} = 4\text{–}6$):** Maximizes $P(NS = 1)$ between **35.8% and 42.3%** while holding $P(NS \ge 2)$ comfortably below the 20% danger ceiling (6.9% to 15.4%).
+  - **Contention Warning ($K_{NS} \ge 7$):** Pushes $P(NS \ge 2) > 20\%$. Running 8–9 normal summons means 25%–32% of all opening hands contain conflicting, stranded dead cards. Starters beyond the 6th copy must be `[STARTER-SS]` (Spells or free bodies).
 
 ### `[STARTER-SS]`: Special Summon / Spell 1-Card Starter
 * **Definition:** A 1-card starter that does not consume the turn's Normal Summon.

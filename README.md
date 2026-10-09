@@ -10,10 +10,15 @@ An end-to-end, high-performance competitive Yu-Gi-Oh! ecosystem developed by the
 |   1. AGENT REASONING LAYER (`skills/`)                                                          |
 |      • `ygo-deck-architect`:                                                                    |
 |         - Enforces >90% Opening Consistency via Hypergeometric Combinatorics.                   |
-|         - The Asymmetric Hand Size Axiom (Turn 0 n=5 Hand Traps vs Turn 2 n=6 Breakers).        |
-|         - Multi-Engine "Pile Deck" Clustering (protects secondary engines from tech confusion).|
-|         - Full .YDK Lifecycle: Ingestion, parsing, and verbatim simulator exports.              |
-|         - Dual Format Support: Advanced vs. Genesys 100-Point Budget Audits.                    |
+|         - Normal Summon Contention Engine: Maximizes P(NS=1) sweet spot & caps clashes <= 20%.  |
+|         - Brick Dilution & Rebalancing: Expands deck size & scales [STARTER-SS] to dilute bricks.|
+|         - Format Auto-Detection & Gating: Distinguishes Advanced vs Genesys; bypasses budget    |
+|           audits if Link/Pendulum monsters or >100 points are detected.                         |
+|         - Turn 1 Combo Routing & Tier-1 Hand Trap Resiliency Matrix (Ash, Droll, Nibiru, etc.).  |
+|         - Turn 2 Going-Second Quality Hand Analysis under the Asymmetric Hand Size Axiom.       |
+|         - Official Konami (KDE) 183-Field Decklist PDF Engine (bidirectional filling & audits).|
+|         - Archetype Profiles Library (`references/archetypes/` with Revol-Bots profile).        |
+|         - Zero-Google Grounding: Mandates local PSCT & `ygo-judge` rulings arbitration.         |
 |      • `ygo-judge`:                                                                             |
 |         - Head Tournament Judge rulings arbitrator grounded in YGOrganization PSCT rules.       |
 |         - 4-Step Adjudication Protocol (Location, Timing When vs If, Cost/Target, Conjunction). |
@@ -34,6 +39,7 @@ An end-to-end, high-performance competitive Yu-Gi-Oh! ecosystem developed by the
 |      • ADR-002: Competitive Deck Architecture & Hypergeometric Probability Engine.              |
 |      • ADR-003: Deterministic PSCT Adjudication & Rulings Engine.                               |
 |      • ADR-004: Monorepo Architecture, Git Bloat Protection & Obsidian Branding.                 |
+|      • ADR-005: Konami Official Tournament Decklist (KDE) Engine.                               |
 +-------------------------------------------------------------------------------------------------+
 ```
 
@@ -49,7 +55,7 @@ Provides AI agents (Claude Desktop, Cursor, Gemini CLI) with zero-latency (<5ms)
   * `get_card_details`: Unabridged PSCT text, full stats, banlist statuses, and `genesys_points`.
   * `check_banlist`: Format legality verification (`tcg`, `ocg`, `masterduel`, `goat`, `edison`, `genesys`).
   * `get_genesys_points`: Tallies point costs against the 100-point budget and flags illegal Link/Pendulum cards.
-  * `get_top_archetypes`: Macro competitive representation shares and tournament top-cut quantities.
+  * `get_top_archetypes`: Macro competitive representation shares and tournament top-cut quantities (`timeframe: '1-month'` recommended).
   * `list_recent_tournaments`: Premier and Regional tournament events with dates, winners, and formats.
   * `get_tournament_breakdown`: Event metadata and direct YGOPRODeck URL.
   * `get_top_tech_cards`: Calculates empirical tech card adoption rates (Main vs. Side Deck) across top-cut decks with multi-engine pile-deck filtering and `since_date` filtering.
@@ -62,7 +68,10 @@ Provides AI agents (Claude Desktop, Cursor, Gemini CLI) with zero-latency (<5ms)
   npm install             # Installs all workspace dependencies
   npm run build           # Compiles TypeScript across all MCP workspaces
   npm test                # Executes full integration test suite
-  npm run lint:skills     # Validates YAML frontmatter and references in skills/
+  npm run test:kde        # Executes Konami KDE PDF AcroForm filling and auditing tests
+  npm run test:judge      # Executes Dueling Book log dispute parser tests
+  npm run test:all        # Runs polyglot test suite across Node and Python engines
+  npm run lint:skills     # Validates YAML frontmatter, markdown links, and schemas in skills/
   npm run sync:all        # Runs complete bulk card and tournament meta synchronization
   ```
 
@@ -72,18 +81,25 @@ Provides AI agents (Claude Desktop, Cursor, Gemini CLI) with zero-latency (<5ms)
 
 #### A. `ygo-deck-architect` (`skills/ygo-deck-architect/`)
 A mathematical deck engineering skill enforcing competitive tournament reliability.
-* **>90% Consistency Standard:** Mandates that 40-card decks run $\ge 14$ primary starters to ensure $P(X \ge 1) > 90\%$ in a 5-card opening hand.
-* **Asymmetric Hand Size Axiom:** Strictly evaluates Turn 0 Hand Traps at $n=5$ (opening hand) and Turn 2 Board Breakers at $n=6$ (draw phase).
-* **Multi-Engine Pile Deck Clustering:** Automatically clusters Main Deck archetypes with $\ge 3$ cards as *Engine Packages*, preventing secondary splash engines (*Bystials*, *Horus*, *Azamina*) from polluting generic tech card statistics.
-* **Full .YDK Lifecycle:** Ingests raw `.ydk` text, resolves passcodes via the MCP server, and exports copy-pasteable standard `.ydk` simulator code blocks.
-* **Dual Format Support:** Full Advanced format banlist compliance + Genesys format 100-point budget auditing.
+* **>90% Consistency Standard:** Mandates running sufficient primary starters to guarantee $P(X \ge 1) > 90\%$ in a 5-card opening hand (e.g. $\ge 14$ starters in 40 cards, $\ge 22$ in 60 cards).
+* **Normal Summon Contention Engine:** Evaluates $P(NS = 1)$ (optimal tempo sweet spot, maximized at 4–6 NS starters) against $P(NS \ge 2)$ (conflicting normal summons stranded in hand). Triggers a contention warning if $P(NS \ge 2) > 20\%$.
+* **Brick Dilution & Rebalancing Blueprint:** If an engine requires irreducible hard bricks (`[HARD-BRICK]` / Garnets), calculates expanded deck sizes ($40 \rightarrow 42, 45, 50, 60$) to dilute brick risk, rebalancing total starters, optimal normal summons, and hand traps. Enforces that all added starters must strictly be `[STARTER-SS]`.
+* **Format Auto-Detection & Gating:** Distinguishes between Advanced and Genesys formats. Automatically detects disqualifiers (any Link or Pendulum card, or total points exceeding the 100-point cap) and bypasses the Genesys budget table to evaluate strictly as Advanced.
+* **Turn 1 Combo Routing & Resiliency Matrix:** Maps primary uninterrupted combo lines, fallback branches, and evaluates vulnerability severity (`Fatal`, `High`, `Med`, `Low`) against Tier-1 disruptions (*Ash Blossom, Droll & Lock Bird, Nibiru, Impermanence, Dimension Shifter*).
+* **Turn 2 Going-Second Quality Hands:** Evaluates joint probabilities under the Asymmetric Hand Size Axiom: Turn 0 Hand Trap access ($n=5$) combined with Turn 2 engine starter and board breaker/extender access ($n=6$).
+* **Official Konami (KDE) Tournament Decklist Engine:** Populates the official 183-field AcroForm PDF (`KDE_DeckList.pdf`), performs double-entry discrepancy audits ($\Delta = \sum \text{Count} - \text{Total}$) against Section IX penalties, and handles bidirectional `.ydk` $\leftrightarrow$ PDF conversion.
+* **Archetype Knowledge Base:** Dedicated tactical profiles in `references/archetypes/` (including *Revol-Bots / R.B.* in `revol_bots.md` and contributor schema in `_template.md`).
+* **Zero-Google Grounding:** Prohibits web searching for rulings or card text. Grounds all PSCT analysis in local MCP data and internal `ygo-judge` arbitration.
 * **Reference Library:**
-  * `hypergeometric_matrices.md`: Lookup tables for 40, 42, 45, 50, and 60-card decks.
-  * `asymmetric_hand_axiom.md`: Mathematical proof of the $n=5$ vs $n=6$ going-second paradigm.
-  * `card_taxonomy_guide.md`: Strict functional taxonomy tags (`[STARTER-NS]`, `[STARTER-SS]`, `[EXTENDER]`, `[TECH-HT]`, `[TECH-BREAKER]`, `[BRICK]`).
-  * `ydk_handling_guide.md`: Specification for .ydk syntax, passcode resolution, and simulator exports.
+  * `hypergeometric_matrices.md`: Pre-computed tables for 40, 42, 45, 50, 60-card decks, Normal Summon contention, and Brick Dilution rebalancing.
+  * `card_taxonomy_guide.md`: Functional taxonomy tags (`[STARTER-NS]`, `[STARTER-SS]`, `[STARTER-1.5]`, `[EXTENDER]`, `[TECH-HT]`, `[TECH-BREAKER]`, `[HARD-BRICK]`, `[ENGINE-BRICK]`).
+  * `asymmetric_hand_axiom.md`: Mathematical proof of the $n=5$ (Turn 0) vs $n=6$ (Turn 2) going-second paradigm.
+  * `graph_generation_engine.md`: ASCII and Mermaid probability curve templates with NS contention and quality hand meters.
+  * `kde_decklist_guide.md`: Official Konami 183-field AcroForm PDF standard, slot capacity limits, and discrepancy auditing.
+  * `KDE_DeckList.pdf`: Official empty Konami Digital Entertainment Decklist AcroForm PDF template.
   * `genesys_format_architecture.md`: Genesys 100-point budget, mechanical bans (0 Links / 0 Pendulums), and 0-point engine optimization.
-  * `graph_generation_engine.md`: ASCII and Mermaid probability curve templates.
+  * `ydk_handling_guide.md`: Specifications for `.ydk` syntax, passcode resolution, pile deck clustering, and setup-shedding sideboards.
+  * `archetypes/`: Dedicated archetype profiles catalog (`revol_bots.md`, `_template.md`).
 
 #### B. `ygo-judge` (`skills/ygo-judge/`)
 A tournament-grade rulings arbitrator grounded in YGOrganization's *Demystifying Rulings*.
@@ -108,6 +124,7 @@ Preserves the complete design history and technical rationale behind the suite:
 * [ADR-002: Deck Architect Skill Design](docs/decisions/ADR-002-deck-architect-skill.md): Hypergeometric formulas and asymmetric hand axioms.
 * [ADR-003: Judge Skill Design](docs/decisions/ADR-003-judge-skill.md): 4-step PSCT adjudication and regional rule splits.
 * [ADR-004: Monorepo Architecture](docs/decisions/ADR-004-root-monorepo-structure.md): Monorepo governance and Git bloat prevention.
+* [ADR-005: Konami Official Tournament Decklist (KDE) Engine](docs/decisions/ADR-005-kde-decklist-support.md): AcroForm PDF population, arithmetic audits, and .ydk translation.
 
 ---
 
@@ -135,17 +152,27 @@ Preserves the complete design history and technical rationale behind the suite:
 ### 1. The >90% Opening Consistency Threshold
 In Tier-1 competitive play, an 85% starter consistency rate means dropping ~2 games purely due to unplayable hands over an 8-round Swiss tournament. To guarantee championship-level reliability, decks must target:
 $$P(X \ge 1) = 1 - \frac{\binom{N - K}{5}}{\binom{N}{5}} > 90\%$$
-* **40 Cards:** Requires **$\ge 14$ Starters** (Exact $90.4\%$).
-* **60 Cards:** Requires **$\ge 21$ Starters** (Exact $90.1\%$).
+* **40 Cards:** Requires **$\ge 14$ Starters** (Exact $90.0\%$).
+* **60 Cards:** Requires **$\ge 22$ Starters** (Exact $90.8\%$).
 
-### 2. The Asymmetric Hand Size Axiom
+### 2. Normal Summon Optimization & Contention Capping
+Because players are mechanically restricted to **one Normal Summon per turn**:
+* **Sweet Spot ($K_{NS} = 4\text{--}6$ in 40 cards):** Maximizes $P(NS = 1)$ between **35.8% and 42.3%** while keeping hand contention $P(NS \ge 2)$ safely below the **20% danger ceiling** (6.9% to 15.4%).
+* **Contention Warning ($K_{NS} \ge 7$):** Running 8–9 normal summons means 25%–32% of opening hands hold clashing, dead normal summons. Additional starters must strictly be `[STARTER-SS]`.
+
+### 3. Brick Dilution & The `[STARTER-SS]` Rebalancing Mandate
+When hard bricks (`[HARD-BRICK]` / Garnets) cannot be cut from an engine:
+* Expanding deck size ($40 \rightarrow 45, 50, 60$) dilutes brick draw risk (e.g. 2 Garnets drop from 23.7% in 40 cards to 21.2% in 45 cards and 16.1% in 60 cards).
+* **The Golden Rebalancing Rule:** All additional starters added to rebalance consistency must be Special Summon starters (`[STARTER-SS]`) or free bodies—never extra normal summons.
+
+### 4. The Asymmetric Hand Size Axiom
 * **Turn 0 Hand Traps ($n = 5$):** Must interrupt the opponent during Turn 1 before their end-board is established. A hand trap drawn as the 6th card on Turn 2 is typically dead against built negations. Evaluated using $n=5$.
 * **Turn 2 Board Breakers ($n = 6$):** Board breakers (*Dark Ruler No More*, *Super Polymerization*, *Evenly Matched*) and engine cards are utilized after drawing for turn. Evaluated using $n=6$.
 
-### 3. Problem-Solving Card Text (PSCT) Adjudication
+### 5. Problem-Solving Card Text (PSCT) Adjudication & Zero-Google Policy
 Adjudication follows strict semantic parsing of colons and semicolons:
 $$\text{[Activation Condition]} : \text{[Cost / Targeting / Action at Activation]} ; \text{[Effect at Resolution]}$$
-Conjunctions (`then`, `and if you do`, `also`, `and`) govern simultaneous timing resolution and determine whether trigger conditions like `"When... you can"` miss timing.
+Conjunctions (`then`, `and if you do`, `also`, `and`) govern simultaneous timing resolution and determine whether trigger conditions like `"When... you can"` miss timing. Internet forum searches are strictly prohibited in favor of authoritative local PSCT and the internal `ygo-judge` engine.
 
 ---
 
